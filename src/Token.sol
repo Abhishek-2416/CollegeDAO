@@ -1,5 +1,3 @@
-// Try using this as URI ipfs://bafkreic6ov4qo4ucd4g4uuyve4h72nc4y2lg7ugtq3n3vxnfp3lojvtmdu
-
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 

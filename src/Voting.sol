@@ -26,7 +26,7 @@ contract Voting {
     /**
      * Creating a Proposal contaning all the relevant information
      */
-    struct Proposal {
+    struct Proposal {   
         string description;
         uint256 deadline;
         uint256 yesVotes;
@@ -35,7 +35,7 @@ contract Voting {
     }
 
     //Creating a mapping of ID to Proposal to keep a track of all the Proposal created
-    mapping(uint256 => Proposal) private proposals;
+    mapping(uint256 proposalId => Proposal) private proposals;
     uint256 private numProposals; //To keep a track of number of proposals created
 
     constructor(address members) payable {
@@ -62,32 +62,32 @@ contract Voting {
     }
 
     function castVote(uint256 _proposalId, Vote vote) external memberOfDAOOnly activeProposalOnly(_proposalId) {
-        Proposal storage proposal = proposals[_proposalId];
+        Proposal storage thisproposal = proposals[_proposalId];
         if (vote == Vote.Yes) {
-            proposal.yesVotes++;
-            proposal.voteState[msg.sender] = Vote.Yes;
+            thisproposal.yesVotes++;
+            thisproposal.voteState[msg.sender] = Vote.Yes;
         } else if (vote == Vote.No) {
-            proposal.noVotes++;
-            proposal.voteState[msg.sender] = Vote.No;
+            thisproposal.noVotes++;
+            thisproposal.voteState[msg.sender] = Vote.No;
         }
     }
 
     function changeVote(uint256 _proposalId, Vote vote) external memberOfDAOOnly activeProposalOnly(_proposalId) {
         // clear out previous vote
-        Proposal storage proposal = proposals[_proposalId];
-        if (proposal.voteState[msg.sender] == Vote.Yes) {
-            proposal.yesVotes--;
+        Proposal storage thisproposal = proposals[_proposalId];
+        if (thisproposal.voteState[msg.sender] == Vote.Yes) {
+            thisproposal.yesVotes--;
         }
-        if (proposal.voteState[msg.sender] == Vote.No) {
-            proposal.noVotes--;
+        if (thisproposal.voteState[msg.sender] == Vote.No) {
+            thisproposal.noVotes--;
         }
 
         if (vote == Vote.Yes) {
-            proposal.yesVotes++;
-            proposal.voteState[msg.sender] = Vote.Yes;
+            thisproposal.yesVotes++;
+            thisproposal.voteState[msg.sender] = Vote.Yes;
         } else if (vote == Vote.No) {
-            proposal.noVotes++;
-            proposal.voteState[msg.sender] = Vote.No;
+            thisproposal.noVotes++;
+            thisproposal.voteState[msg.sender] = Vote.No;
         }
     }
 }
