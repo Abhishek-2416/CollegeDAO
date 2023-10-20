@@ -7,6 +7,9 @@ import "@openzeppelin/contracts@4.7.0/access/Ownable.sol";
 import "@openzeppelin/contracts@4.7.0/utils/Counters.sol";
 
 contract Token is ERC721, ERC721URIStorage, Ownable {
+    /**Errors */
+    error Token__OnlyOneNftPerPerson();
+
     using Counters for Counters.Counter;
 
     Counters.Counter public _tokenIdCounter;
@@ -17,6 +20,9 @@ contract Token is ERC721, ERC721URIStorage, Ownable {
     constructor() ERC721("CollegeDAO", "JNTUH") {}
 
     function safeMint(address to, string memory uri) public onlyOwner {
+        if(balanceOf(to) == 1){
+            revert Token__OnlyOneNftPerPerson();
+        }
         uint256 tokenId = _tokenIdCounter.current();
         _tokenIdCounter.increment();
         _safeMint(to, tokenId);
