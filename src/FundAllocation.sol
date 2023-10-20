@@ -105,6 +105,4 @@ contract FundAllocation {
 
         emit MakePayment(thisRequest.recepient, thisRequest.value);
     }
-
-
 }
