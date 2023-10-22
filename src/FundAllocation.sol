@@ -6,6 +6,8 @@ import {Token} from "../src/Token.sol";
 contract FundAllocation {
     Token token;
 
+    enum Vote{Yes,No}
+
     /**Errors */
     error FundAllocation__NotTheOwnerOfProposal();
     error FundAllocation__NotMemberOfTheDAO();
@@ -21,6 +23,8 @@ contract FundAllocation {
         uint256 raisedAmount;
         uint256 noOfContributors;
         mapping(address => uint256) contributors;
+        mapping(uint256 => Request) requests;
+        uint256 numRequest;
     }
 
     mapping(uint256 proposalId => Proposal) private proposals;
@@ -33,19 +37,18 @@ contract FundAllocation {
         uint256 value;
         bool completed;
         uint256 noOfVoters;
-        mapping(address => bool) voters;
+        mapping(address => Vote) voteStateInRequest;
         uint256 proposalId;
-        uint256 numRequests;
+        uint256 noOfYesVotes;
+        uint256 noOfNoVotes;
     }
-
-    //mapping the spending requests , the key is the spending request number (index) 
-    mapping(uint256 => Request) requests;
-    uint256 private numRequest;
 
     /**Events */
     event ProposalCreatedForFunds(string indexed _mainDescription,uint256 indexed _goal,uint256 indexed _deadline);
     event Contributed(address indexed _sender,uint256 indexed _value);
     event CreateRequest(string _description,address _recepient,uint256 _value);
+    event VoteRequested(address indexed voter,bool indexed Vote);
+
     event MakePayment(address _recepient,uint256 _value);
 
     constructor(address members){
@@ -100,24 +103,54 @@ contract FundAllocation {
     }
 
     function CreateRequestToSpendFunds(uint256 proposalId,string calldata description,address payable _recepient,uint256 _value) external OnlyProposalOwner(proposalId) {
-        Request storage newRequest = requests[numRequest];
+        Proposal storage thisproposal = proposals[proposalId];
+        Request storage newRequest = thisproposal.requests[thisproposal.numRequest];
         newRequest.requestdescription = description;
         newRequest.recepient = _recepient;
         newRequest.value = _value;
         newRequest.completed = false;
         newRequest.noOfVoters = 0;
 
-        newRequest.numRequests++;
-        numRequest++;
+        thisproposal.numRequest++;
     }
 
-    function voteRequest(uint256 requestId) external memberOfDAOOnly {
-        Request storage thisRequest = requests[requestId];
-        if(thisRequest.voters[msg.sender] == true){
-            revert FundAllocation__YouHaveAlreadyVoted();
+    function voteRequest(uint256 proposalId,uint256 requestId,Vote vote) external memberOfDAOOnly {
+        Proposal storage thisproposal = proposals[proposalId];
+        Request storage thisRequest = thisproposal.requests[requestId];
+        if(vote == Vote.Yes){
+            thisRequest.noOfYesVotes++;
+            thisRequest.voteStateInRequest[msg.sender] == Vote.Yes;
+        }else if(vote == Vote.No){
+            thisRequest.noOfNoVotes++;
+            thisRequest.voteStateInRequest[msg.sender] == Vote.No;
         }
-        thisRequest.voters[msg.sender] == true;
+
         thisRequest.noOfVoters++;
     }
+
+    function changeVoteForRequest(uint256 proposalId,uint256 requestId,Vote vote) external memberOfDAOOnly {
+        Proposal storage thisproposal = proposals[proposalId];
+        Request storage thisRequest = thisproposal.requests[requestId];
+        //Clearing out previous vote
+        if(thisRequest.voteStateInRequest[msg.sender] == Vote.Yes){
+            thisRequest.noOfYesVotes--;
+        }else if(thisRequest.voteStateInRequest[msg.sender] == Vote.No){
+            thisRequest.noOfNoVotes--;
+        }
+
+        if(vote == Vote.Yes){
+            thisRequest.noOfYesVotes++;
+            thisRequest.voteStateInRequest[msg.sender] = Vote.Yes;
+        }else if(vote == Vote.Yes){
+            thisRequest.noOfNoVotes++;
+            thisRequest.voteStateInRequest[msg.sender] = Vote.No;
+        }
+    }
+
+    // function makePayment(uint256 proposalId,uint256 requestId) external OnlyProposalOwner(proposalId){
+    //     Proposal storage thisproposal = proposals[proposalId];
+    //     Request storage thisRequest = thisproposal.requests[requestId];
+    //     if()
+    // }
 
 }
