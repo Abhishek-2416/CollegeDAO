@@ -3,7 +3,7 @@ pragma solidity ^0.8.20;
 
 import {Token} from "./Token.sol";
 
-contract FundAllocation {
+contract RefrenceFundAllocation {
     Token token;
 
     /**State Variables */
