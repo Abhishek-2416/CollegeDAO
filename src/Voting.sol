@@ -16,6 +16,7 @@ contract Voting {
      * Events
      */
     event ProposalCreated(string indexed description, uint256 indexed proposalId);
+    
 
     //This is the possible options to vote for
     enum Vote {

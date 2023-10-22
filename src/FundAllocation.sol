@@ -7,13 +7,18 @@ contract FundAllocation {
     Token token;
 
     /**State Variables */
-    string public mainDescription;
-    address immutable i_admin;
-    uint256 private noOfContributors;
-    uint256 private deadline;
-    uint256 private goal;
-    uint256 private raisedAmount;
-    mapping(address => uint256) contributors;
+
+    struct Proposal {
+        string mainDescription;
+        uint256 deadline;
+        uint256 goal;
+        uint256 raisedAmount;
+        mapping(address => uint256) contributors;
+        uint256 noOfContributors;
+    }
+
+    mapping(uint256 proposalId => Proposal) private proposals;
+    uint256 private numProposals; 
 
 
     //Creating a spending request
@@ -34,18 +39,16 @@ contract FundAllocation {
     event Contribute(address _sender,uint256 _value);
     event CreateRequest(string _description, address _recepient,uint256 _value);
     event MakePayment(address _recepient,uint256 _value);
+    event ProposalCreatedForFunds(string _mainDescription,uint256 _goal,uint256 _deadline);
 
-    constructor(string memory _mainDescription,uint256 _goal,uint256 _deadline){
-        mainDescription = _mainDescription;
-        goal = _goal;
-        deadline = block.timestamp + _deadline;
-        i_admin = msg.sender;
+    constructor(address members){
+        token = Token(members);
     }
 
-    modifier OnlyAdmin(){
-        require(msg.sender == i_admin);
-        _;
-    }
+    // modifier OnlyAdmin(){
+    //     require(msg.sender == i_admin);
+    //     _;
+    // }
 
     modifier memberOfDAOOnly() {
         require(token.balanceOf(msg.sender) > 0, "Dumb");
@@ -53,8 +56,17 @@ contract FundAllocation {
     }
 
     modifier activeProposalOnly(){
-        require(block.timestamp < deadline);
+        require(block.timestamp < Proposal.deadline);
         _;
+    }
+
+    function createProposal(string memory _mainDescription,uint256 _goal,uint256 _deadline) public memberOfDAOOnly {
+        Proposal storage proposal = new Proposal[numProposals];
+        proposal.description = _description;
+        proposal.deadline = block.timestamp + _deadline;
+        proposal.goal = _goal;
+        numProposals++;
+        emit ProposalCreatedForFunds(_mainDescription,_goal,_deadline);
     }
 
     function contribute() public payable activeProposalOnly memberOfDAOOnly{
@@ -69,11 +81,7 @@ contract FundAllocation {
         emit Contribute(msg.sender,msg.value);
     }
 
-    function getBalance() public view returns(uint256){
-        return address(this).balance;
-    }
-
-    function createRequest(string calldata _description,address payable _recepient, uint256 _value) public OnlyAdmin memberOfDAOOnly activeProposalOnly{
+    function createRequest(string calldata _description,address payable _recepient, uint256 _value) public  memberOfDAOOnly activeProposalOnly{
         Request storage newRequest = requests[numRequests];
         numRequests++;
 
@@ -93,10 +101,10 @@ contract FundAllocation {
         thisRequest.noOfVoters++;
     }
 
-    function makePayment(uint256 requestId) public OnlyAdmin{
+    function makePayment(uint256 requestId) public {
         Request storage thisRequest = requests[requestId];
         require(thisRequest.completed == false);
-        require(thisRequest.noOfVoters > noOfContributors / 2);
+        require(thisRequest.noOfVoters > Proposal.noOfContributors / 2);
         thisRequest.completed == true;
         
         //Now transferring funds to the recepient address

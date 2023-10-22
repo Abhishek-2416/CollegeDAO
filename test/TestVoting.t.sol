@@ -40,20 +40,13 @@ contract TestVoting is Test {
     }
 
     function testIfTheDescriptionOfProposalIsRight() public{
-
         vm.prank(bob);
         voting.createProposal(actualDescription,deadline);
-
-        
         string memory expectedDescription = voting.getProposalDescription(0);
-
-        
         assert(keccak256(abi.encodePacked(actualDescription)) == keccak256(abi.encodePacked(expectedDescription)));
     }
 
     function testEventemitsWhenProposalIsCalled() public {
-        
-
         vm.prank(bob);
         vm.expectEmit(true,true,false,true);
         emit ProposalCreated(actualDescription,1);
@@ -111,5 +104,4 @@ contract TestVoting is Test {
         assertEq(voting.getProposalNoVotes(0),0);
         assertEq(voting.getProposalYesVotes(0),1);
     }
-
 }

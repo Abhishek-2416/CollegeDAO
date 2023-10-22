@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.4;
+pragma solidity ^0.8.20;
 
 import {Test ,console} from "forge-std/Test.sol";
 import {Token} from "../src/Token.sol";
@@ -21,11 +21,6 @@ contract TestToken is Test{
     function setUp() external {
         deployer = new DeployToken();
         token = deployer.run();
-    }
-
-    function getOwnerAddress() public view returns(address){
-        return address(this);
-        console.log(address(this));
     }
 
     function testIntialBalanceShouldBeZero() public {
@@ -133,7 +128,4 @@ contract TestToken is Test{
         token.revoke(0);
         assertEq(token.balanceOf(bob),0);
     }
- 
-
-
 }
