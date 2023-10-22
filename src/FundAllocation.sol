@@ -13,7 +13,7 @@ contract FundAllocation {
     error FundAllocation__NotMemberOfTheDAO();
     error FundAllocation__ThePropsalHasReachedDeadline();
     error FundAllocation__YouHaveAlreadyVoted();
-    error FundAllocation__RequestNotCompleted();
+    error FundAllocation__HasBeenCompleted();
     error FundAllocation__NotEnoughVoters();
 
     struct Proposal {
@@ -79,6 +79,16 @@ contract FundAllocation {
         _;
     }
 
+    modifier voteOnlyIfRequestNotCompleted(uint256 proposalId,uint256 requestId){
+        Proposal storage thisproposal = proposals[proposalId];
+        Request storage thisRequest = thisproposal.requests[requestId];
+
+        if(thisRequest.completed == true){
+            revert  FundAllocation__HasBeenCompleted();
+        }
+        _;
+    }
+
     function createProposal(string calldata _description, uint256 _goal,uint256 _deadline) external memberOfDAOOnly {
         Proposal storage proposal = proposals[numProposals];
         proposal.ownerOfProposal = msg.sender;
@@ -115,7 +125,7 @@ contract FundAllocation {
         thisproposal.numRequest++;
     }
 
-    function voteRequest(uint256 proposalId,uint256 requestId,Vote vote) external memberOfDAOOnly {
+    function voteRequest(uint256 proposalId,uint256 requestId,Vote vote) external memberOfDAOOnly voteOnlyIfRequestNotCompleted(proposalId,requestId){
         Proposal storage thisproposal = proposals[proposalId];
         Request storage thisRequest = thisproposal.requests[requestId];
         if(vote == Vote.Yes){
@@ -129,7 +139,7 @@ contract FundAllocation {
         thisRequest.noOfVoters++;
     }
 
-    function changeVoteForRequest(uint256 proposalId,uint256 requestId,Vote vote) external memberOfDAOOnly {
+    function changeVoteForRequest(uint256 proposalId,uint256 requestId,Vote vote) external memberOfDAOOnly voteOnlyIfRequestNotCompleted(proposalId,requestId){
         Proposal storage thisproposal = proposals[proposalId];
         Request storage thisRequest = thisproposal.requests[requestId];
         //Clearing out previous vote
@@ -148,12 +158,9 @@ contract FundAllocation {
         }
     }
 
-    function makePayment(uint256 proposalId,uint256 requestId) external OnlyProposalOwner(proposalId){
+    function makePayment(uint256 proposalId,uint256 requestId) external OnlyProposalOwner(proposalId) voteOnlyIfRequestNotCompleted(proposalId,requestId){
         Proposal storage thisproposal = proposals[proposalId];
         Request storage thisRequest = thisproposal.requests[requestId];
-        if(thisRequest.completed == false){
-            revert FundAllocation__RequestNotCompleted();
-        }
         if(thisRequest.noOfVoters > thisproposal.noOfContributors / 2){
             revert FundAllocation__NotEnoughVoters();
         }
