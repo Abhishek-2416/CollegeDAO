@@ -23,6 +23,11 @@ contract TestToken is Test{
         token = deployer.run();
     }
 
+    function getOwnerAddress() public view returns(address){
+        return address(this);
+        console.log(address(this));
+    }
+
     function testIntialBalanceShouldBeZero() public {
         assertEq(token.balanceOf(bob),0);
     }
@@ -128,14 +133,7 @@ contract TestToken is Test{
         token.revoke(0);
         assertEq(token.balanceOf(bob),0);
     }
-
-    function testTransferEventWhenMint() public {
-        vm.prank(msg.sender);
-        vm.recordLogs();
-        token.safeMint(bob,"nft");
-        Vm.Log[] memory entries = vm.getRecordedLogs();
-        
-    }
+ 
 
 
 }

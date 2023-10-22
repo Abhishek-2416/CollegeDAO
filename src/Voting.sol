@@ -43,17 +43,17 @@ contract Voting {
     }
 
     //Creating a modifier which allows the function to be called only by the people who own the NFT
-    modifier memberOfDAOOnly() {
-        require(token.balanceOf(msg.sender) > 0, "Dumb");
-        _;
-    }
+    // modifier memberOfDAOOnly() {
+    //     require(token.balanceOf(msg.sender) > 0, "Dumb");
+    //     _;
+    // }
 
     modifier activeProposalOnly(uint256 proposalIndex) {
         require(proposals[proposalIndex].deadline >= block.timestamp, "Fuck");
         _;
     }
 
-    function createProposal(string calldata _description, uint256 _deadline) external memberOfDAOOnly {
+    function createProposal(string calldata _description, uint256 _deadline) external {
         Proposal storage proposal = proposals[numProposals];
         proposal.description = _description;
         proposal.deadline = block.timestamp + _deadline;
@@ -61,7 +61,7 @@ contract Voting {
         emit ProposalCreated(_description, numProposals);
     }
 
-    function castVote(uint256 _proposalId, Vote vote) external memberOfDAOOnly activeProposalOnly(_proposalId) {
+    function castVote(uint256 _proposalId, Vote vote) external  activeProposalOnly(_proposalId) {
         Proposal storage thisproposal = proposals[_proposalId];
         if (vote == Vote.Yes) {
             thisproposal.yesVotes++;
@@ -72,7 +72,7 @@ contract Voting {
         }
     }
 
-    function changeVote(uint256 _proposalId, Vote vote) external memberOfDAOOnly activeProposalOnly(_proposalId) {
+    function changeVote(uint256 _proposalId, Vote vote) external activeProposalOnly(_proposalId) {
         // clear out previous vote
         Proposal storage thisproposal = proposals[_proposalId];
         if (thisproposal.voteState[msg.sender] == Vote.Yes) {
@@ -90,4 +90,32 @@ contract Voting {
             thisproposal.voteState[msg.sender] = Vote.No;
         }
     }
+
+    /**Getter Functions */
+
+    function getNumberOfProposals() external view returns(uint256){
+        return numProposals;
+    }
+
+    function getProposalDescription(uint256 proposalId) external view returns(string memory){
+        Proposal storage proposal = proposals[proposalId];
+        return proposal.description;
+    }
+
+    function getProposalYesVotes(uint256 proposalId) external view returns(uint256){
+        Proposal storage proposal = proposals[proposalId];
+        return proposal.yesVotes;
+    }
+
+    function getProposalNoVotes(uint256 proposalId) external view returns(uint256){
+        Proposal storage proposal = proposals[proposalId];
+        return proposal.noVotes;
+    }
+
+    function getProposalDeadline(uint256 proposalId) external view returns(uint256){
+        Proposal storage proposal = proposals[proposalId];
+        return proposal.deadline;
+    }
+
+
 }

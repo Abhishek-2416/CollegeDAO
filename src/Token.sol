@@ -61,4 +61,5 @@ contract Token is ERC721, ERC721URIStorage, Ownable {
     function getTokenCount() external view returns (uint256) {
         return _tokenIdCounter.current();
     }
+
 }
