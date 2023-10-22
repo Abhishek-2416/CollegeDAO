@@ -13,7 +13,8 @@ contract FundAllocation {
     error FundAllocation__NotMemberOfTheDAO();
     error FundAllocation__ThePropsalHasReachedDeadline();
     error FundAllocation__YouHaveAlreadyVoted();
-
+    error FundAllocation__RequestNotCompleted();
+    error FundAllocation__NotEnoughVoters();
 
     struct Proposal {
         address ownerOfProposal;
@@ -147,10 +148,21 @@ contract FundAllocation {
         }
     }
 
-    // function makePayment(uint256 proposalId,uint256 requestId) external OnlyProposalOwner(proposalId){
-    //     Proposal storage thisproposal = proposals[proposalId];
-    //     Request storage thisRequest = thisproposal.requests[requestId];
-    //     if()
-    // }
+    function makePayment(uint256 proposalId,uint256 requestId) external OnlyProposalOwner(proposalId){
+        Proposal storage thisproposal = proposals[proposalId];
+        Request storage thisRequest = thisproposal.requests[requestId];
+        if(thisRequest.completed == false){
+            revert FundAllocation__RequestNotCompleted();
+        }
+        if(thisRequest.noOfVoters > thisproposal.noOfContributors / 2){
+            revert FundAllocation__NotEnoughVoters();
+        }
+
+        //transferring the funds to the recepient address
+        (bool s,) = thisRequest.recepient.call{value: thisRequest.value}("");
+        require(s);
+
+        
+    }
 
 }
