@@ -142,7 +142,7 @@ contract FundAllocation {
         if(vote == Vote.Yes){
             thisRequest.noOfYesVotes++;
             thisRequest.voteStateInRequest[msg.sender] = Vote.Yes;
-        }else if(vote == Vote.Yes){
+        }else if(vote == Vote.No){
             thisRequest.noOfNoVotes++;
             thisRequest.voteStateInRequest[msg.sender] = Vote.No;
         }
