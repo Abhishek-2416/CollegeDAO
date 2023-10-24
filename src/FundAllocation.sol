@@ -2,6 +2,7 @@
 pragma solidity ^0.8.20;
 
 import {Token} from "../src/Token.sol";
+import {ReentrancyGuard} from "@openzeppelin/contracts@4.7.0/security/ReentrancyGuard.sol";
 
 contract FundAllocation {
     Token token;
@@ -15,6 +16,7 @@ contract FundAllocation {
     error FundAllocation__YouHaveAlreadyVoted();
     error FundAllocation__HasBeenCompleted();
     error FundAllocation__NotEnoughVoters();
+    error FundVoting__TransactionFailed();
 
     struct Proposal {
         address ownerOfProposal;
@@ -166,10 +168,15 @@ contract FundAllocation {
         }
 
         //transferring the funds to the recepient address
-        (bool s,) = thisRequest.recepient.call{value: thisRequest.value}("");
-        require(s);
+        uint256 transferAMount = thisRequest.value;
+        thisRequest.value = 0;
+        thisRequest.completed = true;
+        thisproposal.raisedAmount -= transferAMount;
 
-        
+        (bool success, ) = thisRequest.recepient.call{value : transferAMount}("");
+
+        if (!success) {
+            revert FundVoting__TransactionFailed();
+        }        
     }
-
 }
