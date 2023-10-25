@@ -7,6 +7,7 @@ import {ReentrancyGuard} from "@openzeppelin/contracts@4.7.0/security/Reentrancy
 contract FundAllocation {
     Token token;
 
+    /**Enums */
     enum Vote{Yes,No}
 
     /**Errors */
@@ -16,7 +17,11 @@ contract FundAllocation {
     error FundAllocation__YouHaveAlreadyVoted();
     error FundAllocation__HasBeenCompleted();
     error FundAllocation__NotEnoughVoters();
-    error FundVoting__TransactionFailed();
+    error FundAllocation__TransactionFailed();
+    error FundAllocation__TheGoalAmountShouldBeGreaterThanZero();
+    error FundAllocation__TheValueSentShouldBeGreaterThanZero();
+    error FundAllocation__TheRecepientAddressCannotBeNullAddress();
+    error FundAllocation__TheRecepientAddressCannotBeSameAsTheOwnerOfProposal();
 
     struct Proposal {
         address ownerOfProposal;
@@ -51,7 +56,6 @@ contract FundAllocation {
     event Contributed(address indexed _sender,uint256 indexed _value);
     event CreateRequest(string _description,address _recepient,uint256 _value);
     event VoteRequested(address indexed voter,bool indexed Vote);
-
     event MakePayment(address _recepient,uint256 _value);
 
     constructor(address members){
@@ -91,7 +95,17 @@ contract FundAllocation {
         _;
     }
 
+    /**
+     * 
+     * @notice This function is to create a Proposal which require certain funds
+     * @param _description  This is to describe why the poposal was created and what will it be used for 
+     * @param _goal This is the amount of money needed for the campaign
+     * @param _deadline This is to mention the time period of the campaign
+     */
     function createProposal(string calldata _description, uint256 _goal,uint256 _deadline) external memberOfDAOOnly {
+        if(_goal <= 0 ){
+            revert FundAllocation__TheGoalAmountShouldBeGreaterThanZero();
+        }
         Proposal storage proposal = proposals[numProposals];
         proposal.ownerOfProposal = msg.sender;
         proposal.mainDescription = _description;
@@ -102,9 +116,18 @@ contract FundAllocation {
         emit ProposalCreatedForFunds(_description,_goal,_deadline);
     }
 
+    /**
+     * This function allows the members of the DAO to contribute towards the cause for which the Proposal was created
+     * @param proposalId This is unique Id of the Proposal which was created
+     */
     function contribute(uint256 proposalId) external payable activeProposalOnly(proposalId) memberOfDAOOnly {
         //Checking if they are sending money in for the first time
+        if(msg.value <= 0){
+            revert FundAllocation__TheValueSentShouldBeGreaterThanZero();
+        }
+
         Proposal storage thisproposal = proposals[proposalId];
+
         if(thisproposal.contributors[msg.sender] == 0){
             thisproposal.noOfContributors++;
         }
@@ -115,9 +138,29 @@ contract FundAllocation {
         emit Contributed(msg.sender,msg.value);
     }
 
+    /**
+     * This function allows the owner of the Proposal to create a spending Request to spend the funds which were alloted to him
+     * @param proposalId This is unique Id of the Proposal to know which Proposal we are going to allow to spend funds for
+     * @param description This is a short description of to know for what does the owner of Proposal wants to spend the money
+     * @param _recepient This is the person whom the funds will be transfered for the specific request
+     * @param _value This is the value which will be requested by the owner which he can spend in this request
+     */
     function CreateRequestToSpendFunds(uint256 proposalId,string calldata description,address payable _recepient,uint256 _value) external OnlyProposalOwner(proposalId) {
         Proposal storage thisproposal = proposals[proposalId];
         Request storage newRequest = thisproposal.requests[thisproposal.numRequest];
+
+        if(_value <= 0){
+            revert FundAllocation__TheValueSentShouldBeGreaterThanZero();
+        }
+
+        if(_recepient == address(0)){
+            revert FundAllocation__TheRecepientAddressCannotBeNullAddress();
+        }
+
+        if(_recepient == thisproposal.ownerOfProposal){
+            revert FundAllocation__TheRecepientAddressCannotBeSameAsTheOwnerOfProposal();
+        }
+
         newRequest.requestdescription = description;
         newRequest.recepient = _recepient;
         newRequest.value = _value;
@@ -127,6 +170,12 @@ contract FundAllocation {
         thisproposal.numRequest++;
     }
 
+    /**
+     * This function will allow the member of DAO to vote if the speicific request should be approved or not
+     * @param proposalId This to Id of the proposal which will contain the specific request
+     * @param requestId This is the specific request Id which requires votes
+     * @param vote This is the vote which should taken in by the members of the DAO
+     */
     function voteRequest(uint256 proposalId,uint256 requestId,Vote vote) external memberOfDAOOnly voteOnlyIfRequestNotCompleted(proposalId,requestId){
         Proposal storage thisproposal = proposals[proposalId];
         Request storage thisRequest = thisproposal.requests[requestId];
@@ -141,6 +190,12 @@ contract FundAllocation {
         thisRequest.noOfVoters++;
     }
 
+    /**
+     * @notice This function is to change the user's vote on a particular request of proposal proposal
+     * @param proposalId The Id of the Proposal the user wants to vote on 
+     * @param requestId The Id of the Request the user wants to vote on
+     * @param vote The vote which the User wants to change to
+     */
     function changeVoteForRequest(uint256 proposalId,uint256 requestId,Vote vote) external memberOfDAOOnly voteOnlyIfRequestNotCompleted(proposalId,requestId){
         Proposal storage thisproposal = proposals[proposalId];
         Request storage thisRequest = thisproposal.requests[requestId];
@@ -160,9 +215,15 @@ contract FundAllocation {
         }
     }
 
+    /**
+     * @notice This function called by the proposal owner to approve and transfer the payment 
+     * @param proposalId The unique Proposal Id where it should take place
+     * @param requestId  The Request ID of a particular proposal user want to fulfill
+     */
     function makePayment(uint256 proposalId,uint256 requestId) external OnlyProposalOwner(proposalId) voteOnlyIfRequestNotCompleted(proposalId,requestId){
         Proposal storage thisproposal = proposals[proposalId];
         Request storage thisRequest = thisproposal.requests[requestId];
+
         if(thisRequest.noOfVoters > thisproposal.noOfContributors / 2){
             revert FundAllocation__NotEnoughVoters();
         }
@@ -176,7 +237,10 @@ contract FundAllocation {
         (bool success, ) = thisRequest.recepient.call{value : transferAMount}("");
 
         if (!success) {
-            revert FundVoting__TransactionFailed();
-        }        
+            revert FundAllocation__TransactionFailed();
+        }
     }
+
+    /**Getter Functions */
+
 }
