@@ -25,6 +25,8 @@ contract FundAllocation {
     error FundAllocation__TheValueSentShouldBeGreaterThanZero();
     error FundAllocation__TheRecepientAddressCannotBeNullAddress();
     error FundAllocation__TheRecepientAddressCannotBeSameAsTheOwnerOfProposal();
+    error FundAllocation__EnterAValidProposalId();
+    error FundAllocation__EnterAValidRequestId();
 
     struct Proposal {
         address ownerOfProposal;
@@ -60,6 +62,9 @@ contract FundAllocation {
     event CreateRequest(string _description,address _recepient,uint256 _value);
     event VoteRequested(address indexed voter,bool indexed Vote);
     event MakePayment(address _recepient,uint256 _value);
+    event RequestCreated(string indexed description,address indexed recepient,uint256 indexed value);
+    event VoteRequest(address indexed voter,Vote indexed vote);
+    event ChangeVoteRequest(address indexed voter,Vote indexed newVote);
 
     constructor(address members){
         token = Token(members);
@@ -98,6 +103,22 @@ contract FundAllocation {
         _;
     }
 
+    modifier IfValidProposalId(uint256 proposalId) {
+        if(proposalId > numProposals){
+            revert FundAllocation__EnterAValidProposalId();
+        }
+        _;
+    }
+
+    modifier IfValidRequestIdOfTheSpecificProposalId(uint256 proposalId , uint256 requestId){
+        Proposal storage thisProposal = proposals[proposalId];
+
+        if(requestId > thisProposal.numRequest){
+            revert FundAllocation__EnterAValidRequestId();
+        }
+        _;
+    }
+
     /**
      * 
      * @notice This function is to create a Proposal which require certain funds
@@ -105,11 +126,15 @@ contract FundAllocation {
      * @param _goal This is the amount of money needed for the campaign
      * @param _deadline This is to mention the time period of the campaign
      */
-    function createProposal(string calldata _description, uint256 _goal,uint256 _deadline) external memberOfDAOOnly {
+    function createProposal(string calldata _description, uint256 _goal,uint256 _deadline)
+    external
+    memberOfDAOOnly {
         if(_goal <= 0 ){
             revert FundAllocation__TheGoalAmountShouldBeGreaterThanZero();
         }
+
         Proposal storage proposal = proposals[numProposals];
+
         proposal.ownerOfProposal = msg.sender;
         proposal.mainDescription = _description;
         proposal.deadline = block.timestamp + _deadline;
@@ -123,7 +148,10 @@ contract FundAllocation {
      * This function allows the members of the DAO to contribute towards the cause for which the Proposal was created
      * @param proposalId This is unique Id of the Proposal which was created
      */
-    function contribute(uint256 proposalId) external payable activeProposalOnly(proposalId) memberOfDAOOnly {
+    function contribute(uint256 proposalId) external payable
+    activeProposalOnly(proposalId)
+    memberOfDAOOnly
+    IfValidProposalId(proposalId){
         //Checking if they are sending money in for the first time
         if(msg.value <= 0){
             revert FundAllocation__TheValueSentShouldBeGreaterThanZero();
@@ -148,7 +176,9 @@ contract FundAllocation {
      * @param _recepient This is the person whom the funds will be transfered for the specific request
      * @param _value This is the value which will be requested by the owner which he can spend in this request
      */
-    function CreateRequestToSpendFunds(uint256 proposalId,string calldata description,address payable _recepient,uint256 _value) external OnlyProposalOwner(proposalId) {
+    function CreateRequestToSpendFunds(uint256 proposalId,string calldata description,address payable _recepient,uint256 _value) external 
+    OnlyProposalOwner(proposalId)
+    IfValidProposalId(proposalId){
         Proposal storage thisproposal = proposals[proposalId];
         Request storage newRequest = thisproposal.requests[thisproposal.numRequest];
 
@@ -171,6 +201,8 @@ contract FundAllocation {
         newRequest.noOfVoters = 0;
 
         thisproposal.numRequest++;
+
+        emit RequestCreated(description,_recepient,_value);
     }
 
     /**
@@ -179,9 +211,15 @@ contract FundAllocation {
      * @param requestId This is the specific request Id which requires votes
      * @param vote This is the vote which should taken in by the members of the DAO
      */
-    function voteRequest(uint256 proposalId,uint256 requestId,Vote vote) external memberOfDAOOnly voteOnlyIfRequestNotCompleted(proposalId,requestId){
+    function voteRequest(uint256 proposalId,uint256 requestId,Vote vote) external
+    memberOfDAOOnly
+    voteOnlyIfRequestNotCompleted(proposalId,requestId)
+    IfValidProposalId(proposalId)
+    IfValidRequestIdOfTheSpecificProposalId(proposalId,requestId){
+
         Proposal storage thisproposal = proposals[proposalId];
         Request storage thisRequest = thisproposal.requests[requestId];
+
         if(vote == Vote.Yes){
             thisRequest.noOfYesVotes++;
             thisRequest.voteStateInRequest[msg.sender] == Vote.Yes;
@@ -191,6 +229,8 @@ contract FundAllocation {
         }
 
         thisRequest.noOfVoters++;
+
+        emit VoteRequest(msg.sender,vote);
     }
 
     /**
@@ -199,9 +239,15 @@ contract FundAllocation {
      * @param requestId The Id of the Request the user wants to vote on
      * @param vote The vote which the User wants to change to
      */
-    function changeVoteForRequest(uint256 proposalId,uint256 requestId,Vote vote) external memberOfDAOOnly voteOnlyIfRequestNotCompleted(proposalId,requestId){
+    function changeVoteForRequest(uint256 proposalId,uint256 requestId,Vote vote) external
+    memberOfDAOOnly
+    voteOnlyIfRequestNotCompleted(proposalId,requestId)
+    IfValidProposalId(proposalId)
+    IfValidRequestIdOfTheSpecificProposalId(proposalId,requestId){
+
         Proposal storage thisproposal = proposals[proposalId];
         Request storage thisRequest = thisproposal.requests[requestId];
+
         //Clearing out previous vote
         if(thisRequest.voteStateInRequest[msg.sender] == Vote.Yes){
             thisRequest.noOfYesVotes--;
@@ -216,6 +262,8 @@ contract FundAllocation {
             thisRequest.noOfNoVotes++;
             thisRequest.voteStateInRequest[msg.sender] = Vote.No;
         }
+
+        emit ChangeVoteRequest(msg.sender,vote);
     }
 
     /**
@@ -223,7 +271,7 @@ contract FundAllocation {
      * @param proposalId The unique Proposal Id where it should take place
      * @param requestId  The Request ID of a particular proposal user want to fulfill
      */
-    function makePayment(uint256 proposalId,uint256 requestId) external OnlyProposalOwner(proposalId) voteOnlyIfRequestNotCompleted(proposalId,requestId){
+    function makePayment(uint256 proposalId,uint256 requestId) external OnlyProposalOwner(proposalId) voteOnlyIfRequestNotCompleted(proposalId,requestId)IfValidProposalId(proposalId) IfValidRequestIdOfTheSpecificProposalId(proposalId,requestId){
         Proposal storage thisproposal = proposals[proposalId];
         Request storage thisRequest = thisproposal.requests[requestId];
 
@@ -245,5 +293,102 @@ contract FundAllocation {
     }
 
     /**Getter Functions */
+    function getProposalOwner(uint256 proposalId) external view IfValidProposalId(proposalId) returns(address){
+        Proposal storage thisProposal = proposals[proposalId];
+        return thisProposal.ownerOfProposal;
+    }
 
+    function getMainDescriptionOfProposal(uint256 proposalId) external view IfValidProposalId(proposalId) returns(string memory){
+        Proposal storage thisProposal = proposals[proposalId];
+        return thisProposal.mainDescription;
+    }
+
+    function getProposalDeadline(uint256 proposalId) external view IfValidProposalId(proposalId) returns(uint256){
+        Proposal storage thisProposal = proposals[proposalId];
+        return thisProposal.deadline;
+    }
+
+    function getProposalGoal(uint256 proposalId) external view IfValidProposalId(proposalId) returns(uint256){
+        Proposal storage thisProposal = proposals[proposalId];
+        return thisProposal.goal;
+    }
+
+    function getTotalRaisedAmount(uint256 proposalId) external view IfValidProposalId(proposalId) returns(uint256){
+        Proposal storage thisProposal = proposals[proposalId];
+        return thisProposal.raisedAmount;
+    }
+
+    function getNoOfContributors(uint256 proposalId) external view IfValidProposalId(proposalId) returns(uint256){
+        Proposal storage thisProposal = proposals[proposalId];
+        return thisProposal.noOfContributors;
+    }
+
+    function getNoOfRequests(uint256 proposalId) external view IfValidProposalId(proposalId) returns(uint256){
+        Proposal storage thisProposal = proposals[proposalId];
+        return thisProposal.numRequest;
+    }
+
+    function getNoOfProposals() external view returns(uint256){
+        return numProposals;
+    }
+
+    function getContributionBySpecificContributor(uint256 proposalId,address contributor) external view IfValidProposalId(proposalId) returns(uint256){
+        Proposal storage thisProposal = proposals[proposalId];
+        return thisProposal.contributors[contributor];
+    }
+
+    function getDescriptionOfTheRequest(uint256 proposalId,uint256 requestId) external view
+    IfValidProposalId(proposalId)
+    IfValidRequestIdOfTheSpecificProposalId(proposalId,requestId) returns(string memory){
+        Proposal storage thisProposal = proposals[proposalId];
+        Request storage thisRequest = thisProposal.requests[requestId];
+
+        return thisRequest.requestdescription;
+    }
+
+    function getTheAddressOfTheRecepient(uint256 proposalId,uint256 requestId) external view 
+    IfValidProposalId(proposalId)
+    IfValidRequestIdOfTheSpecificProposalId(proposalId,requestId) returns(address){
+        Proposal storage thisProposal = proposals[proposalId];
+        Request storage thisRequest = thisProposal.requests[requestId];
+
+        return thisRequest.recepient;
+    }
+
+    function getBoolIfRequestIsCompletedOrNot(uint256 proposalId,uint256 requestId) external view
+    IfValidProposalId(proposalId)
+    IfValidRequestIdOfTheSpecificProposalId(proposalId,requestId) returns(bool){
+        Proposal storage thisProposal = proposals[proposalId];
+        Request storage thisRequest = thisProposal.requests[requestId];
+
+        return thisRequest.completed;
+    }
+
+    function getNumberOfVotersForSpecificRequest(uint256 proposalId,uint256 requestId)external view 
+    IfValidProposalId(proposalId)
+    IfValidRequestIdOfTheSpecificProposalId(proposalId,requestId) returns(uint256){
+        Proposal storage thisProposal = proposals[proposalId];
+        Request storage thisRequest = thisProposal.requests[requestId];
+
+        return thisRequest.noOfVoters;
+    }
+
+    function getNumberOfYesVotersForSpecificRequest(uint256 proposalId,uint256 requestId)external view 
+    IfValidProposalId(proposalId)
+    IfValidRequestIdOfTheSpecificProposalId(proposalId,requestId) returns(uint256){
+        Proposal storage thisProposal = proposals[proposalId];
+        Request storage thisRequest = thisProposal.requests[requestId];
+
+        return thisRequest.noOfYesVotes;
+    }
+
+    function getNumberOfNoVotersForSpecificRequest(uint256 proposalId,uint256 requestId)external view 
+    IfValidProposalId(proposalId)
+    IfValidRequestIdOfTheSpecificProposalId(proposalId,requestId) returns(uint256){
+        Proposal storage thisProposal = proposals[proposalId];
+        Request storage thisRequest = thisProposal.requests[requestId];
+
+        return thisRequest.noOfNoVotes;
+    }
+    
 }
