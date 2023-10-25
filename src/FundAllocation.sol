@@ -5,6 +5,9 @@ import {Token} from "../src/Token.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts@4.7.0/security/ReentrancyGuard.sol";
 
 contract FundAllocation {
+    /**
+     * @dev 
+     */
     Token token;
 
     /**Enums */
