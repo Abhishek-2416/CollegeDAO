@@ -27,6 +27,9 @@ contract FundAllocation is ReentrancyGuard {
     error FundAllocation__TheRecepientAddressCannotBeSameAsTheOwnerOfProposal();
     error FundAllocation__EnterAValidProposalId();
     error FundAllocation__EnterAValidRequestId();
+    error FundAllocation__TheRequestHasReachedDeadline();
+    error FundAllocation__ValueREquestedCannotBeHigherThanRemaningBalance();
+    error FundAllocation__ActiveREquestCannotBeMoreThanOne();
 
     struct Proposal {
         address ownerOfProposal;
@@ -38,6 +41,8 @@ contract FundAllocation is ReentrancyGuard {
         mapping(address => uint256) contributors;
         mapping(uint256 => Request) requests;
         uint256 numRequest;
+        uint256 amountSpentUntilNow;
+        uint256 activeRequest;
     }
 
     mapping(uint256 proposalId => Proposal) private proposals;
@@ -54,6 +59,7 @@ contract FundAllocation is ReentrancyGuard {
         uint256 proposalId;
         uint256 noOfYesVotes;
         uint256 noOfNoVotes;
+        uint256 requestDeadline;
     }
 
     /**Events */
@@ -89,6 +95,16 @@ contract FundAllocation is ReentrancyGuard {
     modifier activeProposalOnly(uint256 proposalId) {
         if(proposals[proposalId].deadline < block.timestamp ){
             revert FundAllocation__ThePropsalHasReachedDeadline();
+        }
+        _;
+    }
+
+    modifier activeRequestOnly(uint256 proposalId,uint256 requestId) {
+        Proposal storage thisProposal = proposals[proposalId];
+        Request storage thisRequest = thisProposal.requests[requestId];
+
+        if(thisRequest.requestDeadline < block.timestamp){
+            revert FundAllocation__TheRequestHasReachedDeadline();
         }
         _;
     }
@@ -186,6 +202,10 @@ contract FundAllocation is ReentrancyGuard {
             revert FundAllocation__TheValueSentShouldBeGreaterThanZero();
         }
 
+        if(_value > getRemaningBalance(proposalId)){
+            revert FundAllocation__ValueREquestedCannotBeHigherThanRemaningBalance();
+        }
+
         if(_recepient == address(0)){
             revert FundAllocation__TheRecepientAddressCannotBeNullAddress();
         }
@@ -194,12 +214,17 @@ contract FundAllocation is ReentrancyGuard {
             revert FundAllocation__TheRecepientAddressCannotBeSameAsTheOwnerOfProposal();
         }
 
+        if(thisproposal.activeRequest > 1){
+            revert FundAllocation__ActiveREquestCannotBeMoreThanOne();
+        }
+
         newRequest.requestdescription = description;
         newRequest.recepient = _recepient;
         newRequest.value = _value;
         newRequest.completed = false;
         newRequest.noOfVoters = 0;
 
+        thisproposal.activeRequest++;
         thisproposal.numRequest++;
 
         emit RequestCreated(description,_recepient,_value);
@@ -214,6 +239,7 @@ contract FundAllocation is ReentrancyGuard {
     function voteRequest(uint256 proposalId,uint256 requestId,Vote vote) external
     memberOfDAOOnly
     IfValidProposalId(proposalId)
+    activeRequestOnly(proposalId,requestId)
     IfValidRequestIdOfTheSpecificProposalId(proposalId,requestId)
     voteOnlyIfRequestNotCompleted(proposalId,requestId){
 
@@ -242,6 +268,7 @@ contract FundAllocation is ReentrancyGuard {
     function changeVoteForRequest(uint256 proposalId,uint256 requestId,Vote vote) external
     memberOfDAOOnly
     IfValidProposalId(proposalId)
+    activeRequestOnly(proposalId,requestId)
     IfValidRequestIdOfTheSpecificProposalId(proposalId,requestId)
     voteOnlyIfRequestNotCompleted(proposalId,requestId){
 
@@ -289,6 +316,8 @@ contract FundAllocation is ReentrancyGuard {
         thisRequest.value = 0;
         thisRequest.completed = true;
         thisproposal.raisedAmount -= transferAMount;
+        thisproposal.amountSpentUntilNow += transferAMount;
+        thisproposal.activeRequest = 0;
 
         (bool success, ) = thisRequest.recepient.call{value : transferAMount}("");
 
@@ -303,30 +332,20 @@ contract FundAllocation is ReentrancyGuard {
      * @notice This function is used to get total amount requested by the owner to spend 
      * @param proposalId The proposal ID whose details user wants to view 
      */
-    function getTotalAmountRequested(uint256 proposalId) public view 
-    IfValidProposalId(proposalId) 
+    function getTotalAmountSpent(uint256 proposalId) public view 
+    IfValidProposalId(proposalId)
     returns(uint256 x){
         Proposal storage thisProposal = proposals[proposalId];
-
-            uint y = thisProposal.raisedAmount;
-
-            if(y == 0){
-                x =  0;
-            }
-
-            for(uint256 i = 0;i < y;i++){
-                Request storage newRequest = thisProposal.requests[i];
-                x += newRequest.value;
-            }
+        return thisProposal.amountSpentUntilNow;
     }
 
     /**
      * @notice this function is used to get the remaining balance of proposal so that the powner can raise aspend request accordingly 
      * @param proposalId The proposal ID whose details user wants to view 
      */
-    function getRemaningBalance(uint256 proposalId) IfValidProposalId(proposalId) external view returns(uint256 x){
+    function getRemaningBalance(uint256 proposalId) IfValidProposalId(proposalId) public view returns(uint256 x){
             Proposal storage thisProposal = proposals[proposalId];
-            x = thisProposal.raisedAmount - getTotalAmountRequested(proposalId);
+            x = thisProposal.raisedAmount - thisProposal.amountSpentUntilNow;
     }
 
     /**
@@ -522,5 +541,14 @@ contract FundAllocation is ReentrancyGuard {
         Request storage thisRequest = thisProposal.requests[requestId];
 
         return thisRequest.voteStateInRequest[voter];
+    }
+
+    function getRequestDeadline(uint256 proposalId,uint256 requestId) external view 
+    IfValidProposalId(proposalId)
+    IfValidRequestIdOfTheSpecificProposalId(proposalId,requestId) returns(uint256){
+        Proposal storage thisProposal = proposals[proposalId];
+        Request storage thisRequest = thisProposal.requests[requestId];
+
+        return thisRequest.requestDeadline;
     }
 }
