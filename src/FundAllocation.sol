@@ -36,8 +36,8 @@ contract FundAllocation is ReentrancyGuard {
         address ownerOfProposal;
         string mainDescription;
         uint256 deadline;
-        uint256 goal;
-        uint256 raisedAmount;
+            uint256 goal;
+            uint256 raisedAmount;
         uint256 noOfContributors;
         mapping(address => uint256) contributors;
         mapping(uint256 => Request) requests;
@@ -76,6 +76,8 @@ contract FundAllocation is ReentrancyGuard {
     constructor(address members){
         token = Token(members);
     }
+
+    receive() external payable{}
 
     /**Modifier */
 
