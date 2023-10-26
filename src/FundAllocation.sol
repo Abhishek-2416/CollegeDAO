@@ -4,7 +4,7 @@ pragma solidity ^0.8.20;
 import {Token} from "../src/Token.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts@4.7.0/security/ReentrancyGuard.sol";
 
-contract FundAllocation {
+contract FundAllocation is ReentrancyGuard {
     /**
      * @dev 
      */
@@ -213,9 +213,9 @@ contract FundAllocation {
      */
     function voteRequest(uint256 proposalId,uint256 requestId,Vote vote) external
     memberOfDAOOnly
-    voteOnlyIfRequestNotCompleted(proposalId,requestId)
     IfValidProposalId(proposalId)
-    IfValidRequestIdOfTheSpecificProposalId(proposalId,requestId){
+    IfValidRequestIdOfTheSpecificProposalId(proposalId,requestId)
+    voteOnlyIfRequestNotCompleted(proposalId,requestId){
 
         Proposal storage thisproposal = proposals[proposalId];
         Request storage thisRequest = thisproposal.requests[requestId];
@@ -241,9 +241,9 @@ contract FundAllocation {
      */
     function changeVoteForRequest(uint256 proposalId,uint256 requestId,Vote vote) external
     memberOfDAOOnly
-    voteOnlyIfRequestNotCompleted(proposalId,requestId)
     IfValidProposalId(proposalId)
-    IfValidRequestIdOfTheSpecificProposalId(proposalId,requestId){
+    IfValidRequestIdOfTheSpecificProposalId(proposalId,requestId)
+    voteOnlyIfRequestNotCompleted(proposalId,requestId){
 
         Proposal storage thisproposal = proposals[proposalId];
         Request storage thisRequest = thisproposal.requests[requestId];
@@ -271,7 +271,12 @@ contract FundAllocation {
      * @param proposalId The unique Proposal Id where it should take place
      * @param requestId  The Request ID of a particular proposal user want to fulfill
      */
-    function makePayment(uint256 proposalId,uint256 requestId) external OnlyProposalOwner(proposalId) voteOnlyIfRequestNotCompleted(proposalId,requestId)IfValidProposalId(proposalId) IfValidRequestIdOfTheSpecificProposalId(proposalId,requestId){
+    function makePayment(uint256 proposalId,uint256 requestId) external 
+    OnlyProposalOwner(proposalId)
+    IfValidProposalId(proposalId)
+    IfValidRequestIdOfTheSpecificProposalId(proposalId,requestId)
+    voteOnlyIfRequestNotCompleted(proposalId,requestId)
+    nonReentrant{
         Proposal storage thisproposal = proposals[proposalId];
         Request storage thisRequest = thisproposal.requests[requestId];
 
@@ -293,7 +298,14 @@ contract FundAllocation {
     }
 
     /**Getter Functions */
-    function getTotalAmountRequested(uint256 proposalId) public view IfValidProposalId(proposalId) returns(uint256 x){
+
+    /**
+     * @notice This function is used to get total amount requested by the owner to spend 
+     * @param proposalId The proposal ID whose details user wants to view 
+     */
+    function getTotalAmountRequested(uint256 proposalId) public view 
+    IfValidProposalId(proposalId) 
+    returns(uint256 x){
         Proposal storage thisProposal = proposals[proposalId];
 
             uint y = thisProposal.raisedAmount;
@@ -308,55 +320,116 @@ contract FundAllocation {
             }
     }
 
+    /**
+     * @notice this function is used to get the remaining balance of proposal so that the powner can raise aspend request accordingly 
+     * @param proposalId The proposal ID whose details user wants to view 
+     */
     function getRemaningBalance(uint256 proposalId) IfValidProposalId(proposalId) external view returns(uint256 x){
             Proposal storage thisProposal = proposals[proposalId];
             x = thisProposal.raisedAmount - getTotalAmountRequested(proposalId);
     }
 
-    function getProposalOwner(uint256 proposalId) external view IfValidProposalId(proposalId) returns(address){
+    /**
+     * @notice This function is used to get the Owner of a particular proposal
+     * @param proposalId The proposal ID whose details user wants to view
+     */
+    function getProposalOwner(uint256 proposalId) external view 
+    IfValidProposalId(proposalId) 
+    returns(address){
         Proposal storage thisProposal = proposals[proposalId];
         return thisProposal.ownerOfProposal;
     }
 
-    function getMainDescriptionOfProposal(uint256 proposalId) external view IfValidProposalId(proposalId) returns(string memory){
+    /**
+     * @notice This function is used to get the description of a particular proposal
+     * @param proposalId The proposal ID whose details user wants to view
+     */
+    function getMainDescriptionOfProposal(uint256 proposalId) external view 
+    IfValidProposalId(proposalId) 
+    returns(string memory){
         Proposal storage thisProposal = proposals[proposalId];
         return thisProposal.mainDescription;
     }
 
-    function getProposalDeadline(uint256 proposalId) external view IfValidProposalId(proposalId) returns(uint256){
+    /**
+     *  @notice This function gets the deadline time of a particular proposal
+     * @param proposalId The proposal ID whose details user wants to view
+     */
+    function getProposalDeadline(uint256 proposalId) external view 
+    IfValidProposalId(proposalId) 
+    returns(uint256){
         Proposal storage thisProposal = proposals[proposalId];
         return thisProposal.deadline;
     }
 
-    function getProposalGoal(uint256 proposalId) external view IfValidProposalId(proposalId) returns(uint256){
+    /**
+     * @notice this function gets the goal amount of a particular proposal
+     * @param proposalId The proposalID of the proposal whose goal amount the user wants to view
+     */
+    function getProposalGoal(uint256 proposalId) external view 
+    IfValidProposalId(proposalId) 
+    returns(uint256){
         Proposal storage thisProposal = proposals[proposalId];
         return thisProposal.goal;
     }
 
-    function getTotalRaisedAmount(uint256 proposalId) external view IfValidProposalId(proposalId) returns(uint256){
+    /**
+     * 
+     * @param proposalId The proposalID of the proposal whose goal amount the user wants to view
+     */
+    function getTotalRaisedAmount(uint256 proposalId) external view 
+    IfValidProposalId(proposalId) 
+    returns(uint256){
         Proposal storage thisProposal = proposals[proposalId];
         return thisProposal.raisedAmount;
     }
 
-    function getNoOfContributors(uint256 proposalId) external view IfValidProposalId(proposalId) returns(uint256){
+    /**
+     * 
+     * @param proposalId The proposalID of that specific proposal
+     */
+    function getNoOfContributors(uint256 proposalId) external view 
+    IfValidProposalId(proposalId)
+    returns(uint256){
         Proposal storage thisProposal = proposals[proposalId];
         return thisProposal.noOfContributors;
     }
 
-    function getNoOfRequests(uint256 proposalId) external view IfValidProposalId(proposalId) returns(uint256){
+    /**
+     * 
+     * @param proposalId The proposalID of that specific proposal
+     */
+    function getNoOfRequests(uint256 proposalId) external view
+    IfValidProposalId(proposalId)
+    returns(uint256){
         Proposal storage thisProposal = proposals[proposalId];
         return thisProposal.numRequest;
     }
 
+    /**
+     * @notice returns the total number of proposals
+     */
     function getNoOfProposals() external view returns(uint256){
         return numProposals;
     }
 
-    function getContributionBySpecificContributor(uint256 proposalId,address contributor) external view IfValidProposalId(proposalId) returns(uint256){
+    /**
+     * 
+     * @param proposalId The proposalID of that specific proposal
+     * @param contributor The address of the person who has contributed
+     */
+    function getContributionBySpecificContributor(uint256 proposalId,address contributor) external view
+    IfValidProposalId(proposalId)
+    returns(uint256){
         Proposal storage thisProposal = proposals[proposalId];
         return thisProposal.contributors[contributor];
     }
 
+    /**
+     * 
+     * @param proposalId The proposalID of that specific proposal
+     * @param requestId The requestId of that specific request
+     */
     function getDescriptionOfTheRequest(uint256 proposalId,uint256 requestId) external view
     IfValidProposalId(proposalId)
     IfValidRequestIdOfTheSpecificProposalId(proposalId,requestId) returns(string memory){
@@ -366,6 +439,11 @@ contract FundAllocation {
         return thisRequest.requestdescription;
     }
 
+    /**
+     * 
+     * @param proposalId The proposalID of that specific proposal
+     * @param requestId The requestId of that specific request
+     */
     function getTheAddressOfTheRecepient(uint256 proposalId,uint256 requestId) external view 
     IfValidProposalId(proposalId)
     IfValidRequestIdOfTheSpecificProposalId(proposalId,requestId) returns(address){
@@ -375,6 +453,11 @@ contract FundAllocation {
         return thisRequest.recepient;
     }
 
+    /**
+     * 
+     * @param proposalId The proposalID of that specific proposal
+     * @param requestId The requestId of that specific request
+     */
     function getBoolIfRequestIsCompletedOrNot(uint256 proposalId,uint256 requestId) external view
     IfValidProposalId(proposalId)
     IfValidRequestIdOfTheSpecificProposalId(proposalId,requestId) returns(bool){
@@ -384,6 +467,11 @@ contract FundAllocation {
         return thisRequest.completed;
     }
 
+    /**
+     * 
+     * @param proposalId The proposalID of that specific proposal
+     * @param requestId The requestId of that specific request
+     */
     function getNumberOfVotersForSpecificRequest(uint256 proposalId,uint256 requestId)external view 
     IfValidProposalId(proposalId)
     IfValidRequestIdOfTheSpecificProposalId(proposalId,requestId) returns(uint256){
@@ -393,6 +481,11 @@ contract FundAllocation {
         return thisRequest.noOfVoters;
     }
 
+    /**
+     * 
+     * @param proposalId The proposalID of that specific proposal
+     * @param requestId The requestId of that specific request
+     */
     function getNumberOfYesVotersForSpecificRequest(uint256 proposalId,uint256 requestId)external view 
     IfValidProposalId(proposalId)
     IfValidRequestIdOfTheSpecificProposalId(proposalId,requestId) returns(uint256){
@@ -402,6 +495,11 @@ contract FundAllocation {
         return thisRequest.noOfYesVotes;
     }
 
+    /**
+     * 
+     * @param proposalId The proposalID of that specific proposal
+     * @param requestId The requestId of that specific request
+     */
     function getNumberOfNoVotersForSpecificRequest(uint256 proposalId,uint256 requestId)external view 
     IfValidProposalId(proposalId)
     IfValidRequestIdOfTheSpecificProposalId(proposalId,requestId) returns(uint256){
@@ -410,5 +508,19 @@ contract FundAllocation {
 
         return thisRequest.noOfNoVotes;
     }
-    
+
+    /**
+     * 
+     * @param proposalId The proposalID of that specific proposal
+     * @param requestId The requestId of that specific request
+     * @param voter Address of the voter who has voted before
+     */
+    function getRequestAddressVote(uint256 proposalId,uint256 requestId,address voter) external view 
+    IfValidProposalId(proposalId)
+    IfValidRequestIdOfTheSpecificProposalId(proposalId,requestId) returns(Vote){
+        Proposal storage thisProposal = proposals[proposalId];
+        Request storage thisRequest = thisProposal.requests[requestId];
+
+        return thisRequest.voteStateInRequest[voter];
+    }
 }
