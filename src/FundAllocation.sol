@@ -30,6 +30,7 @@ contract FundAllocation is ReentrancyGuard {
     error FundAllocation__TheRequestHasReachedDeadline();
     error FundAllocation__ValueREquestedCannotBeHigherThanRemaningBalance();
     error FundAllocation__ActiveREquestCannotBeMoreThanOne();
+    error FundAllocation__ARequestIsAlreadyActive();
 
     struct Proposal {
         address ownerOfProposal;
@@ -131,6 +132,15 @@ contract FundAllocation is ReentrancyGuard {
 
         if(requestId > thisProposal.numRequest){
             revert FundAllocation__EnterAValidRequestId();
+        }
+        _;
+    }
+
+    modifier activeRequestsExists(uint256 proposalId){
+        Proposal storage thisProposal = proposals[proposalId];
+
+        if(thisProposal.activeRequest != 1){
+            revert FundAllocation__ARequestIsAlreadyActive();
         }
         _;
     }
@@ -239,6 +249,7 @@ contract FundAllocation is ReentrancyGuard {
     function voteRequest(uint256 proposalId,uint256 requestId,Vote vote) external
     memberOfDAOOnly
     IfValidProposalId(proposalId)
+    activeRequestsExists(proposalId)
     activeRequestOnly(proposalId,requestId)
     IfValidRequestIdOfTheSpecificProposalId(proposalId,requestId)
     voteOnlyIfRequestNotCompleted(proposalId,requestId){
@@ -268,6 +279,7 @@ contract FundAllocation is ReentrancyGuard {
     function changeVoteForRequest(uint256 proposalId,uint256 requestId,Vote vote) external
     memberOfDAOOnly
     IfValidProposalId(proposalId)
+    activeRequestsExists(proposalId)
     activeRequestOnly(proposalId,requestId)
     IfValidRequestIdOfTheSpecificProposalId(proposalId,requestId)
     voteOnlyIfRequestNotCompleted(proposalId,requestId){
@@ -543,6 +555,11 @@ contract FundAllocation is ReentrancyGuard {
         return thisRequest.voteStateInRequest[voter];
     }
 
+    /**
+     * 
+     * @param proposalId The proposalID of that specific proposal
+     * @param requestId The requestId of that specific request
+     */
     function getRequestDeadline(uint256 proposalId,uint256 requestId) external view 
     IfValidProposalId(proposalId)
     IfValidRequestIdOfTheSpecificProposalId(proposalId,requestId) returns(uint256){
@@ -550,5 +567,16 @@ contract FundAllocation is ReentrancyGuard {
         Request storage thisRequest = thisProposal.requests[requestId];
 
         return thisRequest.requestDeadline;
+    }
+
+    /**
+     * 
+     * @param proposalId The proposalID of that specific proposal
+     */
+    function getnumOfActiveRequest(uint256 proposalId) external view 
+    IfValidProposalId(proposalId) returns(uint256){
+        Proposal storage thisProposal = proposals[proposalId];
+
+        return thisProposal.activeRequest;
     }
 }
