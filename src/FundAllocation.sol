@@ -293,6 +293,26 @@ contract FundAllocation {
     }
 
     /**Getter Functions */
+    function getTotalAmountRequested(uint256 proposalId) public view IfValidProposalId(proposalId) returns(uint256 x){
+        Proposal storage thisProposal = proposals[proposalId];
+
+            uint y = thisProposal.raisedAmount;
+
+            if(y == 0){
+                x =  0;
+            }
+
+            for(uint256 i = 0;i < y;i++){
+                Request storage newRequest = thisProposal.requests[i];
+                x += newRequest.value;
+            }
+    }
+
+    function getRemaningBalance(uint256 proposalId) IfValidProposalId(proposalId) external view returns(uint256 x){
+            Proposal storage thisProposal = proposals[proposalId];
+            x = thisProposal.raisedAmount - getTotalAmountRequested(proposalId);
+    }
+
     function getProposalOwner(uint256 proposalId) external view IfValidProposalId(proposalId) returns(address){
         Proposal storage thisProposal = proposals[proposalId];
         return thisProposal.ownerOfProposal;
