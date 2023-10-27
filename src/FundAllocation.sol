@@ -36,8 +36,8 @@ contract FundAllocation is ReentrancyGuard {
         address ownerOfProposal;
         string mainDescription;
         uint256 deadline;
-            uint256 goal;
-            uint256 raisedAmount;
+        uint256 goal;
+        uint256 raisedAmount;
         uint256 noOfContributors;
         mapping(address => uint256) contributors;
         mapping(uint256 => Request) requests;
@@ -204,7 +204,7 @@ contract FundAllocation is ReentrancyGuard {
      * @param _recepient This is the person whom the funds will be transfered for the specific request
      * @param _value This is the value which will be requested by the owner which he can spend in this request
      */
-    function CreateRequestToSpendFunds(uint256 proposalId,string calldata description,address payable _recepient,uint256 _value) external 
+    function CreateRequestToSpendFunds(uint256 proposalId,string calldata description,address payable _recepient,uint256 _value,uint256 _requestDeadline) external 
     OnlyProposalOwner(proposalId)
     IfValidProposalId(proposalId){
         Proposal storage thisproposal = proposals[proposalId];
@@ -233,6 +233,7 @@ contract FundAllocation is ReentrancyGuard {
         newRequest.requestdescription = description;
         newRequest.recepient = _recepient;
         newRequest.value = _value;
+        newRequest.requestDeadline = block.timestamp + _requestDeadline;
         newRequest.completed = false;
         newRequest.noOfVoters = 0;
 
@@ -321,13 +322,12 @@ contract FundAllocation is ReentrancyGuard {
         Proposal storage thisproposal = proposals[proposalId];
         Request storage thisRequest = thisproposal.requests[requestId];
 
-        if(thisRequest.noOfVoters > thisproposal.noOfContributors / 2){
-            revert FundAllocation__NotEnoughVoters();
-        }
-
-        //transferring the funds to the recepient address
+        if(thisRequest.noOfVoters > thisRequest.noOfYesVotes / 2){
+            thisRequest.completed = false;
+            thisproposal.activeRequest = 0;
+        }else {
+            //transferring the funds to the recepient address
         uint256 transferAMount = thisRequest.value;
-        thisRequest.value = 0;
         thisRequest.completed = true;
         thisproposal.raisedAmount -= transferAMount;
         thisproposal.amountSpentUntilNow += transferAMount;
@@ -337,6 +337,7 @@ contract FundAllocation is ReentrancyGuard {
 
         if (!success) {
             revert FundAllocation__TransactionFailed();
+        }
         }
     }
 
