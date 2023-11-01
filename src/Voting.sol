@@ -43,27 +43,34 @@ contract Voting {
         token = Token(members);
     }
 
-    //Creating a modifier which allows the function to be called only by the people who own the NFT
-    // modifier memberOfDAOOnly() {
-    //     require(token.balanceOf(msg.sender) > 0, "Dumb");
-    //     _;
-    // }
+    // Creating a modifier which allows the function to be called only by the people who own the NFT
+    modifier memberOfDAOOnly() {
+        if(token.balanceOf(msg.sender) == 0){
+            revert Voting__NotAMemberOfTheDAO();
+        }
+        _;
+    }
 
     modifier activeProposalOnly(uint256 proposalIndex) {
-        require(proposals[proposalIndex].deadline >= block.timestamp, "Fuck");
+        if(proposals[proposalIndex].deadline <= block.timestamp){
+            revert Voting__DeadlineExcedded();
+        }
         _;
     }
 
     function createProposal(string calldata _description, uint256 _deadline) external {
         Proposal storage proposal = proposals[numProposals];
+
         proposal.description = _description;
         proposal.deadline = block.timestamp + _deadline;
         numProposals++;
+
         emit ProposalCreated(_description, numProposals);
     }
 
     function castVote(uint256 _proposalId, Vote vote) external  activeProposalOnly(_proposalId) {
         Proposal storage thisproposal = proposals[_proposalId];
+
         if (vote == Vote.Yes) {
             thisproposal.yesVotes++;
             thisproposal.voteState[msg.sender] = Vote.Yes;
@@ -76,6 +83,7 @@ contract Voting {
     function changeVote(uint256 _proposalId, Vote vote) external activeProposalOnly(_proposalId) {
         // clear out previous vote
         Proposal storage thisproposal = proposals[_proposalId];
+        
         if (thisproposal.voteState[msg.sender] == Vote.Yes) {
             thisproposal.yesVotes--;
         }
