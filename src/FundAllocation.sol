@@ -31,6 +31,7 @@ contract FundAllocation is ReentrancyGuard {
     error FundAllocation__ValueREquestedCannotBeHigherThanRemaningBalance();
     error FundAllocation__ActiveREquestCannotBeMoreThanOne();
     error FundAllocation__ARequestIsAlreadyActive();
+    error FundVoting__SoulBoundTokenAddressCantBeZero();
 
     struct Proposal {
         address ownerOfProposal;
@@ -73,8 +74,11 @@ contract FundAllocation is ReentrancyGuard {
     event VoteRequest(address indexed voter,Vote indexed vote);
     event ChangeVoteRequest(address indexed voter,Vote indexed newVote);
 
-    constructor(address members){
-        token = Token(members);
+    constructor(address SoulBoundToken1){
+        if(SoulBoundToken1 == address(0)){
+            revert FundVoting__SoulBoundTokenAddressCantBeZero();
+        }
+        token = Token(SoulBoundToken1);
     }
 
     receive() external payable{}
@@ -177,9 +181,10 @@ contract FundAllocation is ReentrancyGuard {
      * @param proposalId This is unique Id of the Proposal which was created
      */
     function contribute(uint256 proposalId) external payable
-    activeProposalOnly(proposalId)
     memberOfDAOOnly
-    IfValidProposalId(proposalId){
+    IfValidProposalId(proposalId)
+    activeProposalOnly(proposalId){
+
         //Checking if they are sending money in for the first time
         if(msg.value <= 0){
             revert FundAllocation__TheValueSentShouldBeGreaterThanZero();
