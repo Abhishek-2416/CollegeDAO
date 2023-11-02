@@ -24,6 +24,7 @@ contract TestToken is Test{
     }
 
     function testIntialBalanceShouldBeZero() public {
+        console.log(msg.sender);
         assertEq(token.balanceOf(bob),0);
     }
 

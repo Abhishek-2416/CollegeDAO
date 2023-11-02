@@ -11,6 +11,8 @@ contract Voting {
      */
     error Voting__NotAMemberOfTheDAO();
     error Voting__DeadlineExcedded();
+    error Voting__TheDeadlineCannotBeZero();
+    error Voting__TheDescriptionCannotBeEmpty();
 
     /**
      * Events
@@ -27,7 +29,8 @@ contract Voting {
     /**
      * Creating a Proposal contaning all the relevant information
      */
-    struct Proposal {   
+    struct Proposal {
+        address owner;
         string description;
         uint256 deadline;
         uint256 yesVotes;
@@ -58,8 +61,16 @@ contract Voting {
         _;
     }
 
-    function createProposal(string calldata _description, uint256 _deadline) external {
+    function createProposal(string calldata _description, uint256 _deadline) external memberOfDAOOnly {
         Proposal storage proposal = proposals[numProposals];
+
+        if(_deadline == 0){
+            revert Voting__TheDeadlineCannotBeZero();
+        }
+
+        if(bytes(_description).length == 0){
+            revert Voting__TheDescriptionCannotBeEmpty();
+        }
 
         proposal.description = _description;
         proposal.deadline = block.timestamp + _deadline;
@@ -68,7 +79,7 @@ contract Voting {
         emit ProposalCreated(_description, numProposals);
     }
 
-    function castVote(uint256 _proposalId, Vote vote) external  activeProposalOnly(_proposalId) {
+    function castVote(uint256 _proposalId, Vote vote) external memberOfDAOOnly activeProposalOnly(_proposalId) {
         Proposal storage thisproposal = proposals[_proposalId];
 
         if (vote == Vote.Yes) {
@@ -80,7 +91,7 @@ contract Voting {
         }
     }
 
-    function changeVote(uint256 _proposalId, Vote vote) external activeProposalOnly(_proposalId) {
+    function changeVote(uint256 _proposalId, Vote vote) external memberOfDAOOnly activeProposalOnly(_proposalId) {
         // clear out previous vote
         Proposal storage thisproposal = proposals[_proposalId];
         
