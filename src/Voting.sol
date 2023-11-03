@@ -48,9 +48,9 @@ contract Voting {
 
     // Creating a modifier which allows the function to be called only by the people who own the NFT
     modifier memberOfDAOOnly() {
-        if(token.balanceOf(msg.sender) == 0){
-            revert Voting__NotAMemberOfTheDAO();
-        }
+        // if(token.balanceOf(msg.sender) == 0){
+        //     revert Voting__NotAMemberOfTheDAO();
+        // }
         _;
     }
 
@@ -94,6 +94,8 @@ contract Voting {
     function changeVote(uint256 _proposalId, Vote vote) external memberOfDAOOnly activeProposalOnly(_proposalId) {
         // clear out previous vote
         Proposal storage thisproposal = proposals[_proposalId];
+
+        require(thisproposal.voteState[msg.sender] == Vote.Yes || thisproposal.voteState[msg.sender] == Vote.No);
         
         if (thisproposal.voteState[msg.sender] == Vote.Yes) {
             thisproposal.yesVotes--;
@@ -137,5 +139,8 @@ contract Voting {
         return proposal.deadline;
     }
 
-
+    function getVoteStateOfSpecificUser(uint256 proposalId) external view returns(Vote){
+        Proposal storage proposal = proposals[proposalId];
+        return proposal.voteState[msg.sender];
+    }
 }
