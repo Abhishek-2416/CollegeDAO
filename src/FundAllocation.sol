@@ -34,7 +34,7 @@ contract FundAllocation is ReentrancyGuard {
     error FundAllocation__SoulBoundTokenAddressCantBeZero();
     error FundAllocation__TheDescriptionCannotBeEmpty();
     error FundAllocation__TheDeadlineCannotBeZero();
-    error FundVoting__RequestsCanBeCreatedOnlyAterContributionTimeIsExpired();
+    error FundAllocation__RequestsCanBeCreatedOnlyAterContributionTimeIsExpired();
     error FundAllocation__APersonCannotVoteMoreThanOnce();
 
     struct Proposal {
@@ -157,7 +157,7 @@ contract FundAllocation is ReentrancyGuard {
 
     modifier CreateRequestAfterContributionDeadline(uint256 proposalID) {
         if (proposals[proposalID].deadline > block.timestamp) {
-            revert FundVoting__RequestsCanBeCreatedOnlyAterContributionTimeIsExpired();
+            revert FundAllocation__RequestsCanBeCreatedOnlyAterContributionTimeIsExpired();
         }
         _;
     }
