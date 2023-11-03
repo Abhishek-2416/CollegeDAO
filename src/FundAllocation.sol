@@ -31,7 +31,11 @@ contract FundAllocation is ReentrancyGuard {
     error FundAllocation__ValueREquestedCannotBeHigherThanRemaningBalance();
     error FundAllocation__ActiveREquestCannotBeMoreThanOne();
     error FundAllocation__ARequestIsAlreadyActive();
-    error FundVoting__SoulBoundTokenAddressCantBeZero();
+    error FundAllocation__SoulBoundTokenAddressCantBeZero();
+    error FundAllocation__TheDescriptionCannotBeEmpty();
+    error FundAllocation__TheDeadlineCannotBeZero();
+    error FundVoting__RequestsCanBeCreatedOnlyAterContributionTimeIsExpired();
+    error FundAllocation__APersonCannotVoteMoreThanOnce();
 
     struct Proposal {
         address ownerOfProposal;
@@ -76,7 +80,7 @@ contract FundAllocation is ReentrancyGuard {
 
     constructor(address SoulBoundToken1){
         if(SoulBoundToken1 == address(0)){
-            revert FundVoting__SoulBoundTokenAddressCantBeZero();
+            revert FundAllocation__SoulBoundTokenAddressCantBeZero();
         }
         token = Token(SoulBoundToken1);
     }
@@ -151,6 +155,22 @@ contract FundAllocation is ReentrancyGuard {
         _;
     }
 
+    modifier CreateRequestAfterContributionDeadline(uint256 proposalID) {
+        if (proposals[proposalID].deadline > block.timestamp) {
+            revert FundVoting__RequestsCanBeCreatedOnlyAterContributionTimeIsExpired();
+        }
+        _;
+    }
+
+    modifier IfAlreadyVoted(uint256 proposalId,uint256 requestId){
+        Proposal storage thisproposal = proposals[proposalId];
+        Request storage thisRequest = thisproposal.requests[requestId];
+        if(thisRequest.voteStateInRequest[msg.sender] == Vote.Yes || thisRequest.voteStateInRequest[msg.sender] == Vote.No){
+            revert FundAllocation__APersonCannotVoteMoreThanOnce();
+        }
+        _;
+    }
+
     /**
      * 
      * @notice This function is to create a Proposal which require certain funds
@@ -163,6 +183,14 @@ contract FundAllocation is ReentrancyGuard {
     memberOfDAOOnly {
         if(_goal <= 0 ){
             revert FundAllocation__TheGoalAmountShouldBeGreaterThanZero();
+        }
+
+        if(bytes(_description).length == 0){
+            revert FundAllocation__TheDescriptionCannotBeEmpty();
+        }
+
+        if(_deadline == 0){
+            revert FundAllocation__TheDeadlineCannotBeZero();
         }
 
         Proposal storage proposal = proposals[numProposals];
@@ -180,13 +208,13 @@ contract FundAllocation is ReentrancyGuard {
      * This function allows the members of the DAO to contribute towards the cause for which the Proposal was created
      * @param proposalId This is unique Id of the Proposal which was created
      */
-    function contribute(uint256 proposalId) external payable
+    function contribute(uint256 proposalId,uint256 _value) external payable
     memberOfDAOOnly
     IfValidProposalId(proposalId)
     activeProposalOnly(proposalId){
 
         //Checking if they are sending money in for the first time
-        if(msg.value <= 0){
+        if(_value <= 0){
             revert FundAllocation__TheValueSentShouldBeGreaterThanZero();
         }
 
@@ -196,10 +224,10 @@ contract FundAllocation is ReentrancyGuard {
             thisproposal.noOfContributors++;
         }
 
-        thisproposal.contributors[msg.sender] += msg.value;
-        thisproposal.raisedAmount += msg.value;
+        thisproposal.contributors[msg.sender] += _value;
+        thisproposal.raisedAmount += _value;
 
-        emit Contributed(msg.sender,msg.value);
+        emit Contributed(msg.sender,_value);
     }
 
     /**
@@ -210,8 +238,10 @@ contract FundAllocation is ReentrancyGuard {
      * @param _value This is the value which will be requested by the owner which he can spend in this request
      */
     function CreateRequestToSpendFunds(uint256 proposalId,string calldata description,address payable _recepient,uint256 _value,uint256 _requestDeadline) external 
+    memberOfDAOOnly
     OnlyProposalOwner(proposalId)
-    IfValidProposalId(proposalId){
+    IfValidProposalId(proposalId)
+    CreateRequestAfterContributionDeadline(proposalId){
         Proposal storage thisproposal = proposals[proposalId];
         Request storage newRequest = thisproposal.requests[thisproposal.numRequest];
 
@@ -259,6 +289,7 @@ contract FundAllocation is ReentrancyGuard {
     IfValidProposalId(proposalId)
     activeRequestsExists(proposalId)
     activeRequestOnly(proposalId,requestId)
+    IfAlreadyVoted(proposalId,requestId)
     IfValidRequestIdOfTheSpecificProposalId(proposalId,requestId)
     voteOnlyIfRequestNotCompleted(proposalId,requestId){
 
@@ -289,6 +320,7 @@ contract FundAllocation is ReentrancyGuard {
     IfValidProposalId(proposalId)
     activeRequestsExists(proposalId)
     activeRequestOnly(proposalId,requestId)
+    IfAlreadyVoted(proposalId,requestId)
     IfValidRequestIdOfTheSpecificProposalId(proposalId,requestId)
     voteOnlyIfRequestNotCompleted(proposalId,requestId){
 
