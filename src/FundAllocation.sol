@@ -74,9 +74,10 @@ contract FundAllocation is ReentrancyGuard {
     event CreateRequest(string _description,address _recepient,uint256 _value);
     event VoteRequested(address indexed voter,bool indexed Vote);
     event MakePayment(address _recepient,uint256 _value);
-    event RequestCreated(string indexed description,address indexed recepient,uint256 indexed value);
-    event VoteRequest(address indexed voter,Vote indexed vote);
+    event RequestCreated(uint256 indexed proposalId,string indexed description,address indexed recepient,uint256 value);
+    event VoteCasted(address indexed voter,Vote indexed vote);
     event ChangeVoteRequest(address indexed voter,Vote indexed newVote);
+    event PaymentMade(uint256 indexed proposalId,uint256 indexed requestId);
 
     constructor(address SoulBoundToken1){
         if(SoulBoundToken1 == address(0)){
@@ -272,10 +273,12 @@ contract FundAllocation is ReentrancyGuard {
         newRequest.completed = false;
         newRequest.noOfVoters = 0;
 
+        unchecked {
         thisproposal.activeRequest++;
         thisproposal.numRequest++;
+        }
 
-        emit RequestCreated(description,_recepient,_value);
+        emit RequestCreated(proposalId,description,_recepient,_value);
     }
 
     /**
@@ -297,16 +300,25 @@ contract FundAllocation is ReentrancyGuard {
         Request storage thisRequest = thisproposal.requests[requestId];
 
         if(vote == Vote.Yes){
-            thisRequest.noOfYesVotes++;
             thisRequest.voteStateInRequest[msg.sender] == Vote.Yes;
+
+            unchecked {
+            thisRequest.noOfYesVotes++;
+            thisRequest.noOfVoters++;
+            }
+
+            emit VoteCasted(msg.sender,Vote.Yes);
+            
         }else if(vote == Vote.No){
-            thisRequest.noOfNoVotes++;
             thisRequest.voteStateInRequest[msg.sender] == Vote.No;
+
+            unchecked {
+            thisRequest.noOfNoVotes++;
+            thisRequest.noOfVoters++;
+            }
+
+            emit VoteCasted(msg.sender,Vote.No);
         }
-
-        thisRequest.noOfVoters++;
-
-        emit VoteRequest(msg.sender,vote);
     }
 
     /**
@@ -337,9 +349,11 @@ contract FundAllocation is ReentrancyGuard {
         if(vote == Vote.Yes){
             thisRequest.noOfYesVotes++;
             thisRequest.voteStateInRequest[msg.sender] = Vote.Yes;
+            emit VoteCasted(msg.sender,Vote.Yes);
         }else if(vote == Vote.No){
             thisRequest.noOfNoVotes++;
             thisRequest.voteStateInRequest[msg.sender] = Vote.No;
+            emit VoteCasted(msg.sender,Vote.No);
         }
 
         emit ChangeVoteRequest(msg.sender,vote);
@@ -359,22 +373,25 @@ contract FundAllocation is ReentrancyGuard {
         Proposal storage thisproposal = proposals[proposalId];
         Request storage thisRequest = thisproposal.requests[requestId];
 
-        if(thisRequest.noOfVoters > thisRequest.noOfYesVotes / 2){
-            thisRequest.completed = false;
+        if (thisRequest.noOfVoters > thisRequest.noOfYesVotes){
+            thisRequest.completed = true;
             thisproposal.activeRequest = 0;
-        }else {
-            //transferring the funds to the recepient address
-        uint256 transferAMount = thisRequest.value;
-        thisRequest.completed = true;
-        thisproposal.raisedAmount -= transferAMount;
-        thisproposal.amountSpentUntilNow += transferAMount;
-        thisproposal.activeRequest = 0;
-
-        (bool success, ) = thisRequest.recepient.call{value : transferAMount}("");
-
-        if (!success) {
-            revert FundAllocation__TransactionFailed();
         }
+        else {
+            //transferring the funds to the recepient address
+            uint256 transferAMount = thisRequest.value;
+            thisRequest.completed = true;
+            thisproposal.raisedAmount -= transferAMount;
+            thisproposal.amountSpentUntilNow += transferAMount;
+            thisproposal.activeRequest = 0;
+
+            (bool success, ) = thisRequest.recepient.call{value : transferAMount}("");
+
+            if (!success) {
+                revert FundAllocation__TransactionFailed();
+            }
+
+            emit PaymentMade(proposalId,requestId);
         }
     }
 
@@ -618,5 +635,12 @@ contract FundAllocation is ReentrancyGuard {
         Proposal storage thisProposal = proposals[proposalId];
 
         return thisProposal.activeRequest;
+    }
+
+    /**
+     * @notice it returns the address of the soulbound token
+     */
+    function getSoulBoundTokenAddress() external view returns(Token){
+        return token;
     }
 }
