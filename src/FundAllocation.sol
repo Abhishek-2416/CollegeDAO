@@ -172,6 +172,12 @@ contract FundAllocation is ReentrancyGuard {
         _;
     }
 
+    modifier PaymentCanBeMadeOnlyAfterRequestVotingTimeHasExpired(uint256 proposalId,uint256 requestId) {
+        Proposal storage thisProposal = proposals[proposalId];
+        Request storage thisRequest = thisProposal.requests[requestId];
+        _;
+    }
+
     /**
      * 
      * @notice This function is to create a Proposal which require certain funds

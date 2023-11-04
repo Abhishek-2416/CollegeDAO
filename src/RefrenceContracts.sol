@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "./SoulBoundToken.sol";
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import {SoulBoundToken} from "../src/Token.sol";
+import {ReentrancyGuard} from "@openzeppelin/contracts@4.7.0/security/ReentrancyGuard.sol";
 
 contract FundVoting is ReentrancyGuard {
 

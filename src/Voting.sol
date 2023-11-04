@@ -13,12 +13,13 @@ contract Voting {
     error Voting__DeadlineExcedded();
     error Voting__TheDeadlineCannotBeZero();
     error Voting__TheDescriptionCannotBeEmpty();
+    error Voting__AlreadyVoted();
 
     /**
      * Events
      */
     event ProposalCreated(string indexed description, uint256 indexed proposalId);
-    
+    event Voted(uint256 indexed proposalId,address indexed voter);
 
     //This is the possible options to vote for
     enum Vote {
@@ -82,6 +83,10 @@ contract Voting {
     function castVote(uint256 _proposalId, Vote vote) external memberOfDAOOnly activeProposalOnly(_proposalId) {
         Proposal storage thisproposal = proposals[_proposalId];
 
+        if(thisproposal.voteState[msg.sender] == Vote.Yes || thisproposal.voteState[msg.sender] == Vote.No){
+            revert Voting__AlreadyVoted();
+        }
+
         if (vote == Vote.Yes) {
             thisproposal.yesVotes++;
             thisproposal.voteState[msg.sender] = Vote.Yes;
@@ -89,6 +94,8 @@ contract Voting {
             thisproposal.noVotes++;
             thisproposal.voteState[msg.sender] = Vote.No;
         }
+
+        emit Voted(_proposalId,msg.sender);
     }
 
     function changeVote(uint256 _proposalId, Vote vote) external memberOfDAOOnly activeProposalOnly(_proposalId) {
