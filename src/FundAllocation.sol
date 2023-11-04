@@ -44,11 +44,11 @@ contract FundAllocation is ReentrancyGuard {
         uint256 goal;
         uint256 raisedAmount;
         uint256 noOfContributors;
-        mapping(address => uint256) contributors;
-        mapping(uint256 => Request) requests;
         uint256 numRequest;
         uint256 amountSpentUntilNow;
         uint256 activeRequest;
+        mapping(address => uint256) contributors;
+        mapping(uint256 => Request) requests;
     }
 
     mapping(uint256 proposalId => Proposal) private proposals;
@@ -61,11 +61,11 @@ contract FundAllocation is ReentrancyGuard {
         uint256 value;
         bool completed;
         uint256 noOfVoters;
-        mapping(address => Vote) voteStateInRequest;
         uint256 proposalId;
         uint256 noOfYesVotes;
         uint256 noOfNoVotes;
         uint256 requestDeadline;
+        mapping(address => Vote) voteStateInRequest;
     }
 
     /**Events */

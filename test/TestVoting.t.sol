@@ -25,6 +25,7 @@ contract TestVoting is Test {
 
     //Events
     event ProposalCreated(string indexed description, uint256 indexed proposalId);
+    event Voted(uint256 indexed proposalId,address indexed voter);
 
     function setUp() external {
         deployer = new DeployVoting();
@@ -133,6 +134,20 @@ contract TestVoting is Test {
         voting.castVote(0,Voting.Vote.No);
         assertEq(voting.getProposalNoVotes(0),2);
         assert(voting.getVoteStateOfSpecificUser(0) == Voting.Vote.No);
+    }
+
+    function testWhenSinglePersonCannotCastVoteTwice() external {
+        vm.prank(bob);
+        voting.createProposal(actualDescription,actualDeadline);
+        voting.castVote(0,Voting.Vote.Yes);
+        vm.expectRevert();
+        voting.castVote(0,Voting.Vote.No);
+
+        vm.prank(alice);
+        voting.createProposal(actualDescription,actualDeadline);
+        voting.castVote(1,Voting.Vote.No);
+        vm.expectRevert();
+        voting.castVote(1,Voting.Vote.Yes);
     }
 
     function testChangeVoteDoesntWorkWhenProposalNotActive() external {

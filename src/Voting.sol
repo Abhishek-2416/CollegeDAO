@@ -19,7 +19,6 @@ contract Voting {
      * Events
      */
     event ProposalCreated(string indexed description, uint256 indexed proposalId);
-    event Voted(uint256 indexed proposalId,address indexed voter);
 
     //This is the possible options to vote for
     enum Vote {
@@ -37,6 +36,7 @@ contract Voting {
         uint256 yesVotes;
         uint256 noVotes;
         mapping(address => Vote) voteState; // To keep a track what the a paticular address has voted
+        mapping(address => bool) voters;
     }
 
     //Creating a mapping of ID to Proposal to keep a track of all the Proposal created
@@ -83,10 +83,10 @@ contract Voting {
     function castVote(uint256 _proposalId, Vote vote) external memberOfDAOOnly activeProposalOnly(_proposalId) {
         Proposal storage thisproposal = proposals[_proposalId];
 
-        if(thisproposal.voteState[msg.sender] == Vote.Yes || thisproposal.voteState[msg.sender] == Vote.No){
+        if(thisproposal.voters[msg.sender]){
             revert Voting__AlreadyVoted();
         }
-
+        
         if (vote == Vote.Yes) {
             thisproposal.yesVotes++;
             thisproposal.voteState[msg.sender] = Vote.Yes;
@@ -95,7 +95,7 @@ contract Voting {
             thisproposal.voteState[msg.sender] = Vote.No;
         }
 
-        emit Voted(_proposalId,msg.sender);
+        thisproposal.voters[msg.sender] = true;
     }
 
     function changeVote(uint256 _proposalId, Vote vote) external memberOfDAOOnly activeProposalOnly(_proposalId) {
