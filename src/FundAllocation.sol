@@ -98,9 +98,9 @@ contract FundAllocation is ReentrancyGuard {
     }
 
     modifier memberOfDAOOnly() {
-        if(token.balanceOf(msg.sender) == 0){
-            revert FundAllocation__NotMemberOfTheDAO();
-        }
+        // if(token.balanceOf(msg.sender) == 0){
+        //     revert FundAllocation__NotMemberOfTheDAO();
+        // }
         _;
     }
 

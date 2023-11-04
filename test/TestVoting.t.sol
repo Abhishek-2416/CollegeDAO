@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import {Test,console} from "forge-std/Test.sol";
+import {Test} from "forge-std/Test.sol";
 import {Token} from "../src/Token.sol";
 import {Voting} from "../src/Voting.sol";
+import {console} from "forge-std/Test.sol";
 import {DeployToken} from "../script/DeployToken.s.sol";
 import {DeployVoting} from "../script/DeployVoting.s.sol";
 
