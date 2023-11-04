@@ -36,6 +36,7 @@ contract FundAllocation is ReentrancyGuard {
     error FundAllocation__TheDeadlineCannotBeZero();
     error FundAllocation__RequestsCanBeCreatedOnlyAterContributionTimeIsExpired();
     error FundAllocation__APersonCannotVoteMoreThanOnce();
+    error FundAllocation__OwnerCannotContribute();
 
     struct Proposal {
         address ownerOfProposal;
@@ -226,6 +227,10 @@ contract FundAllocation is ReentrancyGuard {
         }
 
         Proposal storage thisproposal = proposals[proposalId];
+
+        if(thisproposal.ownerOfProposal == msg.sender){
+            revert FundAllocation__OwnerCannotContribute();
+        }
 
         if(thisproposal.contributors[msg.sender] == 0){
             thisproposal.noOfContributors++;
