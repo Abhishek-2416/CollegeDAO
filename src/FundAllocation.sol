@@ -269,6 +269,10 @@ contract FundAllocation is ReentrancyGuard {
             revert FundAllocation__TheRecepientAddressCannotBeNullAddress();
         }
 
+        if(bytes(description).length == 0){
+            revert FundAllocation__TheDescriptionCannotBeEmpty();
+        }
+
         if(_recepient == thisproposal.ownerOfProposal){
             revert FundAllocation__TheRecepientAddressCannotBeSameAsTheOwnerOfProposal();
         }

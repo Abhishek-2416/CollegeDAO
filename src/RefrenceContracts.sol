@@ -1,8 +1,8 @@
-// SPDX-License-Identifier: MIT
-pragma solidity ^0.8.0;
+// // SPDX-License-Identifier: MIT
+// pragma solidity ^0.8.0;
 
-// import {SoulBoundToken} from "../src/Token.sol";
-// import {ReentrancyGuard} from "@openzeppelin/contracts@4.7.0/security/ReentrancyGuard.sol";
+// import "./SoulBoundToken.sol";
+// import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
 // contract FundVoting is ReentrancyGuard {
 
@@ -29,6 +29,7 @@ pragma solidity ^0.8.0;
 //     error  FundVoting__SoulBoundTokenAddressCantBeZero();
 //     error  FundVoting__YouCannotAbstainFromVoting();
 //     error  FundVoting__CannotChangeVoteToAbstain();
+//     error  FundVoting__DescriptionCantBeEmpty();
 
 //     // ENUMS 
 //     enum VOTE {ABSTAIN,YES,NO}
@@ -104,7 +105,6 @@ pragma solidity ^0.8.0;
 
 //     modifier ActiveIfRequestNotFulfilled(uint256 proposalID,uint256 requestID) {
 //         // Proposal storage currentProposal = proposals[proposalID];
-
 //         // Request storage thisRequest = proposals[proposalID].requests[requestID];
 
 //         if (proposals[proposalID].requests[requestID].completed) {
@@ -200,6 +200,14 @@ pragma solidity ^0.8.0;
 //             revert FundVoting__ValueShouldBeGreaterThanZero();
 //         }
 
+//         if (_deadline <= 0) {
+//             revert FundVoting__ValueShouldBeGreaterThanZero();
+//         }
+
+//         if (bytes(_description).length <= 0) {
+//             revert FundVoting__DescriptionCantBeEmpty();
+//         }
+
 //         Proposal storage proposal = proposals[proposalCount];
 
 //         proposal.deadline = block.timestamp + _deadline;
@@ -226,6 +234,10 @@ pragma solidity ^0.8.0;
 //         }
         
 //         Proposal storage proposal = proposals[proposalID];
+
+//         if(proposal.ownerOfProposal == msg.sender){
+//             revert FundAllocation__OwnerCannotContribute();
+//         }
 
 //         if (proposal.contributors[msg.sender] == 0) {
 //             proposal.numOfContributors++;
@@ -262,6 +274,14 @@ pragma solidity ^0.8.0;
 //         if (_recipient == address(0)) {
 //             revert FundVoting__InvalidReceipentAddressProvided();
 //         }
+
+//         if (_requestDeadline <= 0) {
+//             revert FundVoting__ValueShouldBeGreaterThanZero();
+//         }
+
+//         if (bytes(_description).length <= 0) {
+//             revert FundVoting__DescriptionCantBeEmpty();
+//         } 
 
 //         Proposal storage existingProposal = proposals[proposalID];
 

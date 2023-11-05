@@ -15,7 +15,7 @@ contract TestFundAllocation is Test {
     //Making Addresses
     address bob = makeAddr("bob");
     address alice = makeAddr("alice");
-    address janice = makeAddr("janice");
+    address payable janice = payable(makeAddr("janice"));
     address daoOwner = 0x1804c8AB1F12E6bbf3894d4083f33e07309d1f38;
 
     //State Variables
@@ -203,6 +203,20 @@ contract TestFundAllocation is Test {
         assertEq(fundAllocation.getTotalRaisedAmount(0),contributeAmount*2);
     }
 
+    //Test if the indivual balance increases when contributed
+    function testIfIndivualBalanceOfContributorsGetsUpated() external {
+        vm.prank(bob);
+        fundAllocation.createProposal(proposalDescription,proposalGoal,proposalDeadline);
+
+        vm.prank(alice);
+        fundAllocation.contribute(0,contributeAmount);
+        assertEq(fundAllocation.getContributionBySpecificContributor(0,alice),contributeAmount);
+
+        vm.prank(alice);
+        fundAllocation.contribute(0,contributeAmount);
+        assertEq(fundAllocation.getContributionBySpecificContributor(0,alice),contributeAmount*2);
+    }
+
     //Test the event emits when called the contribute function
     function testContributedEventEmitsWhenCalledIt() external {
         vm.prank(bob);
@@ -213,4 +227,132 @@ contract TestFundAllocation is Test {
         emit Contributed(alice,contributeAmount);
         fundAllocation.contribute(0,contributeAmount);
     }
+
+    //Testing when one person contributes twice the noOfContributors wont increase
+    function testTheNoOfContributorsDontIncreaseWhenContributedTwice() external {
+        vm.prank(bob);
+        fundAllocation.createProposal(proposalDescription,proposalGoal,proposalDeadline);
+
+        vm.prank(alice);
+        fundAllocation.contribute(0,contributeAmount);
+
+        vm.prank(alice);
+        fundAllocation.contribute(0,contributeAmount);
+
+        assertEq(fundAllocation.getNoOfContributors(0),1);
+    }
+
+    ///////////////////////////////////////////
+    /// Function CreateRequestToSpendFunds ////
+    ///////////////////////////////////////////
+
+    //Modifers
+    modifier BaseForCreateRequestoSpendFunds{
+        vm.prank(bob);
+        fundAllocation.createProposal(proposalDescription,proposalGoal,proposalDeadline);
+
+        vm.prank(alice);
+        fundAllocation.contribute(0,contributeAmount);
+        _;
+    }
+
+    //The function can Be called just by members of DAO
+    function testCreateRequestToSpendFundsIsMemberOfDAO() external BaseForCreateRequestoSpendFunds{
+
+    }
+
+    /**
+     * @notice The test to see if CreateRequestToSpendFunds can be called by Proposal Owner only
+     */
+    function testCreateRequestToSpendFundsCanBeCalledByProposalOwnerOnly() external BaseForCreateRequestoSpendFunds {
+        vm.startPrank(bob);
+        vm.warp(block.timestamp + fundAllocation.getProposalDeadline(0));
+        fundAllocation.CreateRequestToSpendFunds(0,requestDescription,janice,requestGoal,requestDeadline);
+        vm.stopPrank();
+
+        //Testing where it should fail when not called by the owner
+        vm.prank(alice);
+        vm.expectRevert();
+        fundAllocation.CreateRequestToSpendFunds(0,requestDescription,janice,requestGoal,requestDeadline);
+    }
+
+    /**
+     * @notice Check If the proposalId entered is correct or not
+     */
+    function testCreateRequestToSpendFundsCannotWorkWithWrongProposalId() external BaseForCreateRequestoSpendFunds{
+        vm.startPrank(bob);
+        vm.warp(block.timestamp + fundAllocation.getProposalDeadline(0));
+        vm.expectRevert();
+        fundAllocation.CreateRequestToSpendFunds(1,requestDescription,janice,requestGoal,requestDeadline);
+        vm.stopPrank();
+    }
+
+    /**
+     * @notice A request can be created just after the proposal deadline has ended
+     */
+    function testCreateRequestToSpendFundsCanBeCalledOnlyAfterDeadline() external BaseForCreateRequestoSpendFunds {
+        //Here the deadline hasnt reached so it shouldnt be able to make a request
+        vm.startPrank(bob);
+        vm.expectRevert();
+        fundAllocation.CreateRequestToSpendFunds(0,requestDescription,janice,requestGoal,requestDeadline);
+        vm.stopPrank();
+    }
+
+    /**
+     * @notice The value sent cannot be zero
+     */
+    function testTheValueCannotBeZeroForCreatingRequests() external BaseForCreateRequestoSpendFunds{
+        vm.startPrank(bob);
+        vm.expectRevert();
+        fundAllocation.CreateRequestToSpendFunds(0,requestDescription,janice,0,requestDeadline);
+        vm.stopPrank();
+    }
+
+    /**
+     * @notice The value obviously cannot be more than the remaning balance
+     */
+    function testTheValueCannotBeMoreThanTheRemaningBalance() external BaseForCreateRequestoSpendFunds{
+        vm.startPrank(bob);
+        vm.warp(block.timestamp + fundAllocation.getProposalDeadline(0));
+        fundAllocation.CreateRequestToSpendFunds(0,requestDescription,janice,requestGoal,requestDeadline);
+        vm.expectRevert();
+        fundAllocation.CreateRequestToSpendFunds(0,requestDescription,janice,proposalGoal,requestDeadline);
+        vm.stopPrank();
+    }
+
+    /**
+     * @notice Test to make sure the recepient address cannot be a null address
+     */
+    function testTheRecepientAddressCannotBeNull() external BaseForCreateRequestoSpendFunds{
+        vm.startPrank(bob);
+        vm.warp(block.timestamp + fundAllocation.getProposalDeadline(0));
+        vm.expectRevert();
+        fundAllocation.CreateRequestToSpendFunds(0,requestDescription,payable(address(0x0)),proposalGoal,requestDeadline);
+        vm.stopPrank();
+    }
+
+    /**
+     * @notice The functon description cannot be empty
+     */
+    function testTheDescriptionForRequestCannotBeEmpty() external {
+        vm.startPrank(bob);
+        vm.warp(block.timestamp + fundAllocation.getProposalDeadline(0));
+        vm.expectRevert();
+        fundAllocation.CreateRequestToSpendFunds(0,"",janice,requestGoal,requestDeadline);
+    }
+
+    /**
+     * @notice Test to make sure the recepient address cannot be proposal owner 
+     */
+    function testTheRecepientAddressCannotBeTheOwner() external BaseForCreateRequestoSpendFunds {
+        vm.startPrank(bob);
+        vm.warp(block.timestamp + fundAllocation.getProposalDeadline(0));
+        vm.expectRevert();
+        fundAllocation.CreateRequestToSpendFunds(0,requestDescription,payable(fundAllocation.getProposalOwner(0)),requestGoal,requestDeadline);
+        vm.stopPrank();
+    }
+
+    /**
+     * @notice Test to check we cannot create another request 
+     */
 }
