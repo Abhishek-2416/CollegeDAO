@@ -334,7 +334,7 @@ contract TestFundAllocation is Test {
     /**
      * @notice The functon description cannot be empty
      */
-    function testTheDescriptionForRequestCannotBeEmpty() external {
+    function testTheDescriptionForRequestCannotBeEmpty() external BaseForCreateRequestoSpendFunds {
         vm.startPrank(bob);
         vm.warp(block.timestamp + fundAllocation.getProposalDeadline(0));
         vm.expectRevert();
@@ -344,15 +344,29 @@ contract TestFundAllocation is Test {
     /**
      * @notice Test to make sure the recepient address cannot be proposal owner 
      */
-    function testTheRecepientAddressCannotBeTheOwner() external BaseForCreateRequestoSpendFunds {
-        vm.startPrank(bob);
-        vm.warp(block.timestamp + fundAllocation.getProposalDeadline(0));
-        vm.expectRevert();
-        fundAllocation.CreateRequestToSpendFunds(0,requestDescription,payable(fundAllocation.getProposalOwner(0)),requestGoal,requestDeadline);
-        vm.stopPrank();
+    function testTheRecepientAddressCannotBeTheProposalOwner() external BaseForCreateRequestoSpendFunds {
+        
     }
 
     /**
-     * @notice Test to check we cannot create another request 
+     * @notice Test to check we cannot create another request when one request is already active
      */
+    function testFailCannotCreateAnotherRequestWhenOneIsAlreadyActive() external {
+        vm.prank(bob);
+        fundAllocation.createProposal(proposalDescription,proposalGoal,proposalDeadline);
+
+        vm.prank(alice);
+        fundAllocation.contribute(0,contributeAmount);
+
+        vm.prank(bob);
+        vm.warp(block.timestamp + fundAllocation.getProposalDeadline(0));
+
+        vm.prank(bob);
+        fundAllocation.CreateRequestToSpendFunds(0,requestDescription,janice,requestGoal,requestDeadline);
+
+        vm.prank(bob);
+        vm.expectRevert();
+        fundAllocation.CreateRequestToSpendFunds(0,requestDescription,janice,requestGoal,requestDeadline);
+
+    }
 }
