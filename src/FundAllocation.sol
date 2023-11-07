@@ -360,7 +360,6 @@ contract FundAllocation is ReentrancyGuard {
     IfValidProposalId(proposalId)
     activeRequestsExists(proposalId)
     activeRequestOnly(proposalId,requestId)
-    IfAlreadyVoted(proposalId,requestId)
     IfValidRequestIdOfTheSpecificProposalId(proposalId,requestId)
     voteOnlyIfRequestNotCompleted(proposalId,requestId){
 

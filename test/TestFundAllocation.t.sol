@@ -35,6 +35,7 @@ contract TestFundAllocation is Test {
     event Contributed(address indexed _sender,uint256 indexed _value);
     event RequestCreated(uint256 indexed proposalId,string indexed description,address indexed recepient,uint256 value);
     event VoteCasted(address indexed voter,Vote indexed vote);
+    event ChangeVoteRequest(address indexed voter,Vote indexed newVote);
 
     function setUp() external {
         deployer = new DeployFundAllocation();
@@ -740,4 +741,93 @@ contract TestFundAllocation is Test {
         emit VoteCasted(daoOwner,Vote.No);
         fundAllocation.voteRequest(0,0,FundAllocation.Vote.No);
     }
+
+    ////////////////////////////////////
+    /// Function ChangeVoteRequest /////
+    ///////////////////////////////////
+
+    modifier BaseConditionForChangeVoteRequest{
+        vm.prank(bob);
+        fundAllocation.createProposal(proposalDescription,proposalGoal,proposalDeadline);
+
+        vm.prank(alice);
+        fundAllocation.contribute(0,contributeAmount);
+
+        vm.prank(bob);
+        vm.warp(block.timestamp + fundAllocation.getProposalDeadline(0));
+
+        vm.prank(bob);
+        fundAllocation.CreateRequestToSpendFunds(0,requestDescription,janice,requestGoal,requestDeadline);
+
+        vm.prank(alice);
+        fundAllocation.voteRequest(0,0,FundAllocation.Vote.Yes);
+
+        vm.prank(daoOwner);
+        fundAllocation.voteRequest(0,0,FundAllocation.Vote.No);
+        _;
+    }
+
+    /**
+     * @notice This is to check the previous vote gets cleared and new is added
+     */
+    function testThePreviousVoteGetsClearedAndNewIsAdded() external 
+    BaseConditionForChangeVoteRequest {
+        vm.prank(alice);
+        fundAllocation.changeVoteForRequest(0,0,FundAllocation.Vote.No);
+        assertEq(fundAllocation.getNumberOfYesVotersForSpecificRequest(0,0),0);
+        assertEq(fundAllocation.getNumberOfNoVotersForSpecificRequest(0,0),2);
+
+        vm.prank(daoOwner);
+        fundAllocation.changeVoteForRequest(0,0,FundAllocation.Vote.Yes);
+        assertEq(fundAllocation.getNumberOfYesVotersForSpecificRequest(0,0),1);
+        assertEq(fundAllocation.getNumberOfNoVotersForSpecificRequest(0,0),1);
+    }
+
+    /**
+     * @notice To check if the VoteState In Request Changes Or not 
+     */
+    function testTheVoteStateChangesWithChangeInVote() external 
+    BaseConditionForChangeVoteRequest {
+        vm.prank(alice);
+        fundAllocation.changeVoteForRequest(0,0,FundAllocation.Vote.No);
+        assert(fundAllocation.getRequestAddressVote(0,0,alice) == FundAllocation.Vote.No);
+
+        vm.prank(daoOwner);
+        fundAllocation.changeVoteForRequest(0,0,FundAllocation.Vote.Yes);
+        assert(fundAllocation.getRequestAddressVote(0,0,daoOwner) == FundAllocation.Vote.Yes);
+    }
+
+    /**
+     * @notice We need to check if the VoteCasted function is emitted or not
+     */
+    function testVoteCastedEventIsEmittedOrNot() external 
+    BaseConditionForChangeVoteRequest {
+        vm.prank(alice);
+        vm.expectEmit(true,true,false,false);
+        emit VoteCasted(alice,Vote.No);
+        fundAllocation.changeVoteForRequest(0,0,FundAllocation.Vote.No);
+
+        vm.prank(daoOwner);
+        vm.expectEmit(true,true,false,false);
+        emit VoteCasted(daoOwner,Vote.Yes);
+        fundAllocation.changeVoteForRequest(0,0,FundAllocation.Vote.Yes);
+    }
+
+    /**
+     * @notice The ChangeVote Function emits an Event
+     */
+    function theChangeVoteEmitsAnEvent() external 
+    BaseConditionForChangeVoteRequest {
+        vm.prank(alice);
+        vm.expectEmit(true,true,false,false);
+        emit ChangeVoteRequest(alice,Vote.No);
+        fundAllocation.changeVoteForRequest(0,0,FundAllocation.Vote.No);
+
+        vm.prank(daoOwner);
+        vm.expectEmit(true,true,false,false);
+        emit ChangeVoteRequest(daoOwner,Vote.Yes);
+        fundAllocation.changeVoteForRequest(0,0,FundAllocation.Vote.Yes);
+    }
+
+    
 }
