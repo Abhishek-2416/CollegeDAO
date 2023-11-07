@@ -11,7 +11,7 @@ contract FundAllocation is ReentrancyGuard {
     Token token;
 
     /**Enums */
-    enum Vote{Yes,No}
+    enum Vote{Abstain,Yes,No}
 
     /**Errors */
     error FundAllocation__NotTheOwnerOfProposal();
