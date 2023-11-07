@@ -30,6 +30,7 @@ contract TestFundAllocation is Test {
     //Events
     event ProposalCreatedForFunds(string indexed _mainDescription,uint256 indexed _goal,uint256 indexed _deadline);
     event Contributed(address indexed _sender,uint256 indexed _value);
+    event RequestCreated(uint256 indexed proposalId,string indexed description,address indexed recepient,uint256 value);
 
     function setUp() external {
         deployer = new DeployFundAllocation();
@@ -472,4 +473,94 @@ contract TestFundAllocation is Test {
         fundAllocation.CreateRequestToSpendFunds(0,requestDescription,janice,requestGoal,requestDeadline);
         assert(fundAllocation.getBoolIfRequestIsCompletedOrNot(0,0) == false);
     }
+
+    /**
+     * @notice Test to check the number of voters is zero when proposal is created
+     */
+    function testTheNumberOfVotersShouldBeZeroAtStart() external {
+        vm.prank(bob);
+        fundAllocation.createProposal(proposalDescription,proposalGoal,proposalDeadline);
+
+        vm.prank(alice);
+        fundAllocation.contribute(0,contributeAmount);
+
+        vm.prank(bob);
+        vm.warp(block.timestamp + fundAllocation.getProposalDeadline(0));
+
+        vm.prank(bob);
+        fundAllocation.CreateRequestToSpendFunds(0,requestDescription,janice,requestGoal,requestDeadline);
+        assertEq(fundAllocation.getNumberOfNoVotersForSpecificRequest(0,0),0);
+    }
+
+    /**
+     * @notice To test the no Of activeRequests increase
+     */
+    function testTheNumberOfActiveRequestIncrease() external {
+        vm.prank(bob);
+        fundAllocation.createProposal(proposalDescription,proposalGoal,proposalDeadline);
+
+        vm.prank(alice);
+        fundAllocation.contribute(0,contributeAmount);
+        fundAllocation.contribute(0,contributeAmount);
+
+        vm.prank(bob);
+        vm.warp(block.timestamp + fundAllocation.getProposalDeadline(0));
+
+        vm.prank(bob);
+        fundAllocation.CreateRequestToSpendFunds(0,requestDescription,janice,requestGoal,requestDeadline);
+        assertEq(fundAllocation.getnumOfActiveRequest(0),1);
+
+        vm.prank(bob);
+        vm.expectRevert();
+        fundAllocation.CreateRequestToSpendFunds(0,requestDescription,janice,requestGoal,requestDeadline);
+        assertEq(fundAllocation.getnumOfActiveRequest(0),2);
+    }
+
+    /**
+     * @notice To test the no Of Requests increase
+     */
+    function testTheNumberOfRequestIncrease() external {
+        vm.prank(bob);
+        fundAllocation.createProposal(proposalDescription,proposalGoal,proposalDeadline);
+
+        vm.prank(alice);
+        fundAllocation.contribute(0,contributeAmount);
+
+        vm.prank(bob);
+        vm.warp(block.timestamp + fundAllocation.getProposalDeadline(0));
+
+        vm.prank(bob);
+        fundAllocation.CreateRequestToSpendFunds(0,requestDescription,janice,requestGoal,requestDeadline);
+        assertEq(fundAllocation.getNoOfRequests(0),1);
+
+        vm.prank(bob);
+        vm.expectRevert();
+        fundAllocation.CreateRequestToSpendFunds(0,requestDescription,janice,requestGoal,requestDeadline);
+        assertEq(fundAllocation.getNoOfRequests(0),2);
+    }
+
+    /**
+     * @notice To Check if the event RequestCreated get emitted
+     */
+    function testIfTheRequestCreatedEventGetsEmitted() external {
+        vm.prank(bob);
+        fundAllocation.createProposal(proposalDescription,proposalGoal,proposalDeadline);
+
+        vm.prank(alice);
+        fundAllocation.contribute(0,contributeAmount);
+
+        vm.prank(bob);
+        vm.warp(block.timestamp + fundAllocation.getProposalDeadline(0));
+
+        vm.prank(bob);
+        vm.expectEmit(true,true,true,true);
+        emit RequestCreated(0,requestDescription,janice,requestGoal);
+        fundAllocation.CreateRequestToSpendFunds(0,requestDescription,janice,requestGoal,requestDeadline);
+    }
+
+    /////////////////////////////
+    /// Function VoteRequest ////
+    /////////////////////////////
+
+    
 }

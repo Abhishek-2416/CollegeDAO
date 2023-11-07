@@ -277,7 +277,7 @@ contract FundAllocation is ReentrancyGuard {
             revert FundAllocation__TheRecepientAddressCannotBeSameAsTheOwnerOfProposal();
         }
 
-        if(thisproposal.activeRequest > 1){
+        if(thisproposal.activeRequest >= 1){
             revert FundAllocation__ActiveREquestCannotBeMoreThanOne();
         }
 
