@@ -400,11 +400,10 @@ contract FundAllocation is ReentrancyGuard {
         Proposal storage thisproposal = proposals[proposalId];
         Request storage thisRequest = thisproposal.requests[requestId];
 
-        if (thisRequest.noOfVoters > thisRequest.noOfYesVotes){
+        if (thisRequest.noOfVoters >= thisRequest.noOfYesVotes){
             thisRequest.completed = true;
             thisproposal.activeRequest = 0;
-        }
-        else {
+        }else {
             //transferring the funds to the recepient address
             uint256 transferAMount = thisRequest.value;
             thisRequest.completed = true;
@@ -699,4 +698,14 @@ contract FundAllocation is ReentrancyGuard {
     function getSoulBoundTokenAddress() external view returns(Token){
         return token;
     }
+
+    function getCompletedOrNot(uint256 proposalId,uint256 requestId) external view 
+    IfValidProposalId(proposalId)
+    IfValidRequestIdOfTheSpecificProposalId(proposalId,requestId) returns(bool){
+        Proposal storage thisProposal = proposals[proposalId];
+        Request storage thisRequest = thisProposal.requests[requestId];
+
+        return thisRequest.completed;
+    }
+
 }

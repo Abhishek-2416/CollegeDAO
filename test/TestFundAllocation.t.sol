@@ -9,6 +9,7 @@ import {FundAllocation} from "../src/FundAllocation.sol";
 import {DeployFundAllocation} from "../script/DeployFundAllocation.s.sol";
 
 contract TestFundAllocation is Test {
+    Token token;
     DeployFundAllocation deployer;
     FundAllocation fundAllocation;
 
@@ -36,6 +37,7 @@ contract TestFundAllocation is Test {
     event RequestCreated(uint256 indexed proposalId,string indexed description,address indexed recepient,uint256 value);
     event VoteCasted(address indexed voter,Vote indexed vote);
     event ChangeVoteRequest(address indexed voter,Vote indexed newVote);
+    event PaymentMade(uint256 indexed proposalId,uint256 indexed requestId);
 
     function setUp() external {
         deployer = new DeployFundAllocation();
@@ -829,5 +831,184 @@ contract TestFundAllocation is Test {
         fundAllocation.changeVoteForRequest(0,0,FundAllocation.Vote.Yes);
     }
 
-    
+    //////////////////////////////
+    /// Function MakePayment /////
+    /////////////////////////////
+
+    modifier BaseConditionForMakePayment{
+        vm.prank(bob);
+        fundAllocation.createProposal(proposalDescription,proposalGoal,proposalDeadline);
+
+        vm.prank(alice);
+        fundAllocation.contribute(0,contributeAmount);
+
+        vm.prank(bob);
+        vm.warp(block.timestamp + fundAllocation.getProposalDeadline(0));
+
+        vm.prank(bob);
+        fundAllocation.CreateRequestToSpendFunds(0,requestDescription,janice,requestGoal,requestDeadline);
+
+        vm.prank(alice);
+        fundAllocation.voteRequest(0,0,FundAllocation.Vote.Yes);
+
+        vm.prank(daoOwner);
+        fundAllocation.voteRequest(0,0,FundAllocation.Vote.No);
+
+        _;
+    }
+
+    /**
+     * @notice The function can only be called by the owner of the proposal
+     */
+    function testThisFunctionCanOnlyBeCalledByTheOwnerOfProposal() external 
+    BaseConditionForMakePayment {
+        vm.prank(bob);
+        fundAllocation.makePayment(0,0);
+
+        vm.prank(alice);
+        vm.expectRevert();
+        fundAllocation.makePayment(0,0);
+    }
+
+    /**
+     * @notice This Condition where When No of No Votes is greater then completed is true
+     */
+    function testWhenNoOfNoVotesIsGreater() external 
+    BaseConditionForMakePayment {
+        address abhishek = makeAddr("abhishek");
+        vm.prank(abhishek);
+        fundAllocation.voteRequest(0,0,FundAllocation.Vote.No);
+
+        vm.prank(bob);
+        fundAllocation.makePayment(0,0);
+        assertEq(fundAllocation.getCompletedOrNot(0,0),true);
+    }
+
+    /**
+     * @notice When the no of NoVotes is more the Active Request sets to zero
+     */
+    function testTheActiveRequestsResetsToZeroWhenMoreNoVotes() external
+    BaseConditionForMakePayment {
+        address abhishek = makeAddr("abhishek");
+        vm.prank(abhishek);
+        fundAllocation.voteRequest(0,0,FundAllocation.Vote.No);
+
+        vm.prank(bob);
+        fundAllocation.makePayment(0,0);
+        assertEq(fundAllocation.getnumOfActiveRequest(0),0);
+    }
+
+    /**
+     * @notice When the number of NoVotes and YesVotes are the Same
+     */
+    function testTheNumberOfNoVotesAndYesVotesAreTheSame() external 
+    BaseConditionForMakePayment {
+        vm.prank(bob);
+        fundAllocation.makePayment(0,0);
+        assertEq(fundAllocation.getCompletedOrNot(0,0),true);
+        assertEq(fundAllocation.getnumOfActiveRequest(0),0);
+    }
+
+    /**
+     * @notice When The No of Yes Votes is More Where We Check the completed is true
+     */
+    function theWhenTheNoOfYesVotesIsMoreThenCompletedIsTrue() external
+    BaseConditionForMakePayment {
+        address abhishek = makeAddr("abhishek");
+        vm.prank(abhishek);
+        fundAllocation.voteRequest(0,0,FundAllocation.Vote.Yes);
+
+        vm.prank(bob);
+        fundAllocation.makePayment(0,0);
+        assertEq(fundAllocation.getCompletedOrNot(0,0),true);
+    }
+
+    /**
+     * @notice Deducting the transferAmount from raisedAmount
+     */
+    function theTestWhereRaisedAmountAfterMakingPayment() external
+    BaseConditionForMakePayment {
+        address abhishek = makeAddr("abhishek");
+        vm.prank(abhishek);
+        fundAllocation.voteRequest(0,0,FundAllocation.Vote.Yes);
+
+        vm.prank(bob);
+        fundAllocation.makePayment(0,0);
+        assertEq(fundAllocation.getTotalRaisedAmount(0),proposalGoal-requestGoal);
+    }
+
+    /**
+     * @notice Check the Amount spent until till now
+     */
+    function theTestToCheckTheAmountSpentTillNow() external 
+    BaseConditionForMakePayment {
+        address abhishek = makeAddr("abhishek");
+        vm.prank(abhishek);
+        fundAllocation.voteRequest(0,0,FundAllocation.Vote.Yes);
+
+        vm.prank(bob);
+        fundAllocation.makePayment(0,0);
+        assertEq(fundAllocation.getTotalAmountSpent(0),proposalGoal-requestGoal);
+    }
+
+    /**
+     * @notice The active Request becomes zero
+     */
+    function theTestWhereTheActiveRequestIsZero() external
+    BaseConditionForMakePayment {
+        address abhishek = makeAddr("abhishek");
+        vm.prank(abhishek);
+        fundAllocation.voteRequest(0,0,FundAllocation.Vote.Yes);
+
+        vm.prank(bob);
+        fundAllocation.makePayment(0,0);
+        assertEq(fundAllocation.getnumOfActiveRequest(0),0);
+    }
+
+    /**
+     * @notice The amount should be transffered ti recepient
+     */
+    function theTestWhereTheAmountIsTransferedToRecepient() external {
+        vm.prank(bob);
+        fundAllocation.createProposal(proposalDescription,proposalGoal,proposalDeadline);
+
+        vm.prank(alice);
+        fundAllocation.contribute(0,contributeAmount);
+
+        vm.prank(bob);
+        vm.warp(block.timestamp + fundAllocation.getProposalDeadline(0));
+
+        vm.prank(bob);
+        fundAllocation.CreateRequestToSpendFunds(0,requestDescription,janice,requestGoal,requestDeadline);
+
+        vm.prank(alice);
+        fundAllocation.voteRequest(0,0,FundAllocation.Vote.Yes);
+
+        vm.prank(daoOwner);
+        fundAllocation.voteRequest(0,0,FundAllocation.Vote.No);
+
+        address abhishek = makeAddr("abhishek");
+        vm.prank(abhishek);
+        fundAllocation.voteRequest(0,0,FundAllocation.Vote.Yes);
+
+        vm.prank(bob);
+        fundAllocation.makePayment(0,0);
+        assertEq(token.balanceOf(janice),proposalGoal-requestGoal);
+    }
+
+    /**
+     * @notice The PaymentMade event is emitted when we call makePayment
+     */
+    function testThePaymentMadeIsEmittedWhenMakePaymentIsCalled() external 
+    BaseConditionForMakePayment{
+        address abhishek = makeAddr("abhishek");
+        vm.prank(abhishek);
+        fundAllocation.voteRequest(0,0,FundAllocation.Vote.Yes);
+
+        vm.startPrank(bob);
+        vm.expectEmit(true,true,false,true);
+        emit PaymentMade(0,0);
+        fundAllocation.makePayment(0,0);
+        vm.stopPrank();
+    }
 }
