@@ -27,10 +27,14 @@ contract TestFundAllocation is Test {
     uint256 requestGoal = 5 ether;
     uint256 contributeAmount = 50 ether;
 
+    //Enums
+    enum Vote{Yes,No}
+
     //Events
     event ProposalCreatedForFunds(string indexed _mainDescription,uint256 indexed _goal,uint256 indexed _deadline);
     event Contributed(address indexed _sender,uint256 indexed _value);
     event RequestCreated(uint256 indexed proposalId,string indexed description,address indexed recepient,uint256 value);
+    event VoteCasted(address indexed voter,Vote indexed vote);
 
     function setUp() external {
         deployer = new DeployFundAllocation();
@@ -562,5 +566,178 @@ contract TestFundAllocation is Test {
     /// Function VoteRequest ////
     /////////////////////////////
 
+    modifier BaseModiferForVoteRequest {
+        vm.prank(bob);
+        fundAllocation.createProposal(proposalDescription,proposalGoal,proposalDeadline);
+
+        vm.prank(alice);
+        fundAllocation.contribute(0,contributeAmount);
+
+        vm.prank(bob);
+        vm.warp(block.timestamp + fundAllocation.getProposalDeadline(0));
+
+        vm.prank(bob);
+        fundAllocation.CreateRequestToSpendFunds(0,requestDescription,janice,requestGoal,requestDeadline);
+        _;
+    }
+
+    /**
+     * @notice Test it can only be called by the members of the DAO
+     */
+    function testVoteRequestCanOnlyBeCalledByMemeberOfDAO() external {
+
+    }
     
+    /**
+     * @notice It should works if it has a propoer Proposal Id
+     */
+    function testRevertIfInvalidProposalId() external {
+        vm.prank(bob);
+        fundAllocation.createProposal(proposalDescription,proposalGoal,proposalDeadline);
+
+        vm.prank(alice);
+        fundAllocation.contribute(0,contributeAmount);
+
+        vm.prank(bob);
+        vm.warp(block.timestamp + fundAllocation.getProposalDeadline(0));
+
+        vm.prank(bob);
+        fundAllocation.CreateRequestToSpendFunds(0,requestDescription,janice,requestGoal,requestDeadline);
+
+        vm.prank(alice);
+        fundAllocation.voteRequest(0,0,FundAllocation.Vote.Yes);
+
+        vm.prank(alice);
+        vm.expectRevert();
+        fundAllocation.voteRequest(1,0,FundAllocation.Vote.No);
+    }
+
+    /**
+     * @notice Test To check if reverts the request is Not active
+     */
+    function testTheRequestShouldBeActive() external BaseModiferForVoteRequest {
+        vm.warp(block.timestamp + fundAllocation.getRequestDeadline(0,0));
+
+        vm.prank(alice);
+        vm.expectRevert();
+        fundAllocation.voteRequest(0,0,FundAllocation.Vote.Yes);
+    }
+
+    /**
+     * @notice Test to see One Person cannot vote twice
+     */
+    function testOnePersonCannotVoteTwice() external BaseModiferForVoteRequest {
+        vm.prank(alice);
+        fundAllocation.voteRequest(0,0,FundAllocation.Vote.Yes);
+
+        vm.prank(alice);
+        vm.expectRevert();
+        fundAllocation.voteRequest(0,0,FundAllocation.Vote.No);
+    }
+
+    /**
+     * @notice Test to see it reverts when the Request is Not Completed
+     */
+    function testCannotVoteWhenTheRequestIsInStateCompleted() external 
+    BaseModiferForVoteRequest {
+        vm.prank(bob);
+    }
+
+    /**
+     * @notice Test to see the owner of proposal cannot vote
+     */
+    function testTheOwnerOfProposalCannotVote() external 
+    BaseModiferForVoteRequest {
+        vm.prank(bob);
+        vm.expectRevert();
+        fundAllocation.voteRequest(0,0,FundAllocation.Vote.Yes);
+    }
+
+    /**
+     * @notice The recepient cannot vote
+     */
+    function testTheRecepientOfRequestCannotVote() external 
+    BaseModiferForVoteRequest {
+        vm.prank(janice);
+        vm.expectRevert();
+        fundAllocation.voteRequest(0,0,FundAllocation.Vote.Yes);
+    }
+
+    /**
+     * @notice To check if the Vote State in Requests gets updated
+     */
+    function testIfTheVoteStatevoteInRequestsGetsUpdatedCorectly() external
+    BaseModiferForVoteRequest {
+        vm.prank(alice);
+        fundAllocation.voteRequest(0,0,FundAllocation.Vote.Yes);
+        assert(fundAllocation.getRequestAddressVote(0,0,msg.sender) == FundAllocation.Vote.Yes);
+
+        vm.prank(daoOwner);
+        fundAllocation.voteRequest(0,0,FundAllocation.Vote.No);
+        assert(fundAllocation.getRequestAddressVote(0,0,msg.sender) == FundAllocation.Vote.No);
+    }
+
+    /**
+     * @notice To check if the VoteState gets updated or no
+     */
+    function testIfTheVoteStateInRequestsGetsUpdatedCorrectly() external
+    BaseModiferForVoteRequest {
+        vm.prank(alice);
+        fundAllocation.voteRequest(0,0,FundAllocation.Vote.Yes);
+        assertEq(fundAllocation.getRequestAddressVoteState(0,0,alice),true);
+
+        assertEq(fundAllocation.getRequestAddressVoteState(0,0,daoOwner),false);
+    }
+
+    /**
+     * @notice To check if the Number of Yes votes increase
+     */
+    function testTheNumberOfYesVotesIncreases() external 
+    BaseModiferForVoteRequest {
+        vm.prank(alice);
+        fundAllocation.voteRequest(0,0,FundAllocation.Vote.Yes);
+        assertEq(fundAllocation.getNumberOfYesVotersForSpecificRequest(0,0),1);
+        assertEq(fundAllocation.getNumberOfNoVotersForSpecificRequest(0,0),0);
+    }
+
+    /**
+     * @notice To check if the number of No Votes increases
+     */
+    function testNumberOfNoVotesIncrease() external
+    BaseModiferForVoteRequest {
+        vm.prank(alice);
+        fundAllocation.voteRequest(0,0,FundAllocation.Vote.No);
+        assertEq(fundAllocation.getNumberOfNoVotersForSpecificRequest(0,0),1);
+        assertEq(fundAllocation.getNumberOfYesVotersForSpecificRequest(0,0),0);
+    }
+
+    /**
+     * @notice To check if the total Number of Votes increase
+     */
+    function testTheTotalNumberOfVotersIncrease() external 
+    BaseModiferForVoteRequest {
+        vm.prank(alice);
+        fundAllocation.voteRequest(0,0,FundAllocation.Vote.Yes);
+        assertEq(fundAllocation.getNumberOfVotersForSpecificRequest(0,0),1);
+
+        vm.prank(daoOwner);
+        fundAllocation.voteRequest(0,0,FundAllocation.Vote.No);
+        assertEq(fundAllocation.getNumberOfVotersForSpecificRequest(0,0),2);
+    }
+
+    /**
+     * @notice to check if the event VoteCasted gets emitted
+     */
+    function testTheEventEmitsWhenVoted() external 
+    BaseModiferForVoteRequest {
+        vm.prank(alice);
+        vm.expectEmit(true,true,false,false);
+        emit VoteCasted(alice,Vote.Yes);
+        fundAllocation.voteRequest(0,0,FundAllocation.Vote.Yes);
+
+        vm.prank(daoOwner);
+        vm.expectEmit(true,true,false,false);
+        emit VoteCasted(daoOwner,Vote.No);
+        fundAllocation.voteRequest(0,0,FundAllocation.Vote.No);
+    }
 }

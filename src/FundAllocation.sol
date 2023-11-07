@@ -37,6 +37,8 @@ contract FundAllocation is ReentrancyGuard {
     error FundAllocation__RequestsCanBeCreatedOnlyAterContributionTimeIsExpired();
     error FundAllocation__APersonCannotVoteMoreThanOnce();
     error FundAllocation__OwnerCannotContribute();
+    error FundAllocation__OwnerCannotVote();
+    error FundAllocation__RecepientCannotVote();
 
     struct Proposal {
         address ownerOfProposal;
@@ -67,6 +69,7 @@ contract FundAllocation is ReentrancyGuard {
         uint256 noOfNoVotes;
         uint256 requestDeadline;
         mapping(address => Vote) voteStateInRequest;
+        mapping(address => bool) voteState;
     }
 
     /**Events */
@@ -167,7 +170,7 @@ contract FundAllocation is ReentrancyGuard {
     modifier IfAlreadyVoted(uint256 proposalId,uint256 requestId){
         Proposal storage thisproposal = proposals[proposalId];
         Request storage thisRequest = thisproposal.requests[requestId];
-        if(thisRequest.voteStateInRequest[msg.sender] == Vote.Yes || thisRequest.voteStateInRequest[msg.sender] == Vote.No){
+        if(thisRequest.voteState[msg.sender]){
             revert FundAllocation__APersonCannotVoteMoreThanOnce();
         }
         _;
@@ -314,8 +317,17 @@ contract FundAllocation is ReentrancyGuard {
         Proposal storage thisproposal = proposals[proposalId];
         Request storage thisRequest = thisproposal.requests[requestId];
 
+        if(msg.sender == thisproposal.ownerOfProposal){
+            revert  FundAllocation__OwnerCannotVote();
+        }
+
+        if(msg.sender == thisRequest.recepient){
+            revert FundAllocation__RecepientCannotVote();
+        }
+
         if(vote == Vote.Yes){
-            thisRequest.voteStateInRequest[msg.sender] == Vote.Yes;
+            thisRequest.voteStateInRequest[msg.sender] = Vote.Yes;
+            thisRequest.voteState[msg.sender] = true;
 
             unchecked {
             thisRequest.noOfYesVotes++;
@@ -325,7 +337,8 @@ contract FundAllocation is ReentrancyGuard {
             emit VoteCasted(msg.sender,Vote.Yes);
             
         }else if(vote == Vote.No){
-            thisRequest.voteStateInRequest[msg.sender] == Vote.No;
+            thisRequest.voteStateInRequest[msg.sender] = Vote.No;
+            thisRequest.voteState[msg.sender] = true;
 
             unchecked {
             thisRequest.noOfNoVotes++;
@@ -639,6 +652,21 @@ contract FundAllocation is ReentrancyGuard {
         Request storage thisRequest = thisProposal.requests[requestId];
 
         return thisRequest.voteStateInRequest[voter];
+    }
+
+    /**
+     * 
+     * @param proposalId The proposalID of that specific proposal
+     * @param requestId The requestId of that specific request
+     * @param voter Address of the voter who has voted before
+     */
+    function getRequestAddressVoteState(uint256 proposalId,uint256 requestId,address voter) external view 
+    IfValidProposalId(proposalId)
+    IfValidRequestIdOfTheSpecificProposalId(proposalId,requestId) returns(bool){
+        Proposal storage thisProposal = proposals[proposalId];
+        Request storage thisRequest = thisProposal.requests[requestId];
+
+        return thisRequest.voteState[voter];
     }
 
     /**

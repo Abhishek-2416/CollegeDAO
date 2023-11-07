@@ -30,6 +30,9 @@
 //     error  FundVoting__YouCannotAbstainFromVoting();
 //     error  FundVoting__CannotChangeVoteToAbstain();
 //     error  FundVoting__DescriptionCantBeEmpty();
+//     error  FundVoting__OwnerCannotContribute();
+//     error  FundVoting__OwnerCantVote();
+//     error  FundVoting__RecepientCannotVote();
 
 //     // ENUMS 
 //     enum VOTE {ABSTAIN,YES,NO}
@@ -58,6 +61,7 @@
 //         uint256 noVotes;
 //         uint256 voteCount;
 //         mapping(address => VOTE) voted;
+//         mapping(address => bool) voteState;
 //         uint256 requestDeadline;
 //     }
 
@@ -145,8 +149,7 @@
 //     modifier IfAlreadyVoted(uint256 proposalID) {
 //         // Proposal storage currentProposal = proposals[proposalID];
 //         // Request storage currentRequest = currentProposal.requests[proposals[proposalID].requestCount];
-//         if (proposals[proposalID].requests[proposals[proposalID].requestCount].voted[msg.sender] == VOTE.YES 
-//             || proposals[proposalID].requests[proposals[proposalID].requestCount].voted[msg.sender] == VOTE.NO) {
+//         if (proposals[proposalID].requests[proposals[proposalID].requestCount].voteState) {
 //             revert FundVoting__AlreadyVotedUseChangeVoteFunction();
 //         }        
 //         _;
@@ -236,8 +239,8 @@
 //         Proposal storage proposal = proposals[proposalID];
 
 //         if(proposal.ownerOfProposal == msg.sender){
-//             revert FundAllocation__OwnerCannotContribute();
-//         }
+//               revert FundVoting__OwnerCannotContribute();
+//           }
 
 //         if (proposal.contributors[msg.sender] == 0) {
 //             proposal.numOfContributors++;
@@ -318,11 +321,19 @@
 //     RequestVoteNotActive(proposalID)
 //      {
 //         // Proposal storage existingProposal = proposals[proposalID];
+//         if (msg.sender == proposals[proposalID].ownerOfProposal) {
+//             revert FundVoting__OwnerCantVote();
+//         }
         
 //         Request storage newRequest = proposals[proposalID].requests[requestID];
 
+//         if(msg.sender == newRequest.receipient){
+//             revert FundVoting__RecepientCannotVote();
+//         }
+
 //         if (vote == VOTE.YES) {
 //             newRequest.voted[msg.sender] = VOTE.YES;
+//             newRequest.voteState[msg.sender] = true;
 //             unchecked {
 //                 newRequest.voteCount++;
 //                 newRequest.yesVotes++;
@@ -332,6 +343,7 @@
 
 //         else {
 //             newRequest.voted[msg.sender] = VOTE.NO;
+//             newRequest.voteState[msg.sender] = true;
 //             unchecked {
 //                 newRequest.voteCount++;
 //                 newRequest.noVotes++;
@@ -358,6 +370,9 @@
 //         // Proposal storage existingProposal = proposals[proposalID];
         
 //         // Request storage newRequest = proposals[proposalID].requests[requestID];
+//         if (msg.sender == proposals[proposalID].ownerOfProposal) {
+//             revert FundVoting__OwnerCantVote();
+//         }
 
 //         if (vote == VOTE.ABSTAIN) {
 //             revert FundVoting__CannotChangeVoteToAbstain();
