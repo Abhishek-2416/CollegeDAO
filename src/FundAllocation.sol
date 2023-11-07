@@ -543,6 +543,20 @@ contract FundAllocation is ReentrancyGuard {
     }
 
     /**
+     * To return the value of the RequestMade
+     * @param proposalId The proposalID of that specific proposal
+     * @param requestId The requestId of that specific request
+     */
+    function getGoalOfTheRequest(uint256 proposalId,uint256 requestId)external view 
+    IfValidProposalId(proposalId)
+    IfValidRequestIdOfTheSpecificProposalId(proposalId,requestId) returns(uint256){
+        Proposal storage thisProposal = proposals[proposalId];
+        Request storage thisRequest = thisProposal.requests[requestId];
+
+        return thisRequest.value;
+    }
+
+    /**
      * 
      * @param proposalId The proposalID of that specific proposal
      * @param requestId The requestId of that specific request
