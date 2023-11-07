@@ -345,7 +345,18 @@ contract TestFundAllocation is Test {
      * @notice Test to make sure the recepient address cannot be proposal owner 
      */
     function testTheRecepientAddressCannotBeTheProposalOwner() external BaseForCreateRequestoSpendFunds {
+        vm.prank(bob);
+        fundAllocation.createProposal(proposalDescription,proposalGoal,proposalDeadline);
         
+        vm.prank(alice);
+        fundAllocation.contribute(0,contributeAmount);
+
+        vm.prank(bob);
+        vm.warp(block.timestamp + fundAllocation.getProposalDeadline(0));
+
+        vm.prank(bob);
+        vm.expectRevert();
+        fundAllocation.CreateRequestToSpendFunds(0,requestDescription,payable(bob),requestGoal,requestDeadline);
     }
 
     /**
@@ -367,6 +378,98 @@ contract TestFundAllocation is Test {
         vm.prank(bob);
         vm.expectRevert();
         fundAllocation.CreateRequestToSpendFunds(0,requestDescription,janice,requestGoal,requestDeadline);
+    }
 
+    /**
+     * @notice Test to check The requestDescription is correct or not
+     */
+    function testRequestCreatedDescrptionIsCorrectOrNot() external {
+        vm.prank(bob);
+        fundAllocation.createProposal(proposalDescription,proposalGoal,proposalDeadline);
+
+        vm.prank(alice);
+        fundAllocation.contribute(0,contributeAmount);
+
+        vm.prank(bob);
+        vm.warp(block.timestamp + fundAllocation.getProposalDeadline(0));
+
+        vm.prank(bob);
+        fundAllocation.CreateRequestToSpendFunds(0,requestDescription,janice,requestGoal,requestDeadline);
+        assertEq(
+            keccak256(abi.encodePacked(fundAllocation.getDescriptionOfTheRequest(0,0))),
+            keccak256(abi.encodePacked("Atleast buy me Z900"))
+            );
+    }
+
+    /**
+     * @notice Test tot check if the recepient address is correct or not
+     */
+    function testIfRecepientIsSameOrNot() external {
+        vm.prank(bob);
+        fundAllocation.createProposal(proposalDescription,proposalGoal,proposalDeadline);
+
+        vm.prank(alice);
+        fundAllocation.contribute(0,contributeAmount);
+
+        vm.prank(bob);
+        vm.warp(block.timestamp + fundAllocation.getProposalDeadline(0));
+
+        vm.prank(bob);
+        fundAllocation.CreateRequestToSpendFunds(0,requestDescription,janice,requestGoal,requestDeadline);
+        assertEq(fundAllocation.getTheAddressOfTheRecepient(0,0),janice);
+    }
+
+    /**
+     * @notice Test to see if the value sent to them is also correct or not
+     */
+    function testTheValueForRequestIsCorrectOrNot() external {
+        vm.prank(bob);
+        fundAllocation.createProposal(proposalDescription,proposalGoal,proposalDeadline);
+
+        vm.prank(alice);
+        fundAllocation.contribute(0,contributeAmount);
+
+        vm.prank(bob);
+        vm.warp(block.timestamp + fundAllocation.getProposalDeadline(0));
+
+        vm.prank(bob);
+        fundAllocation.CreateRequestToSpendFunds(0,requestDescription,janice,requestGoal,requestDeadline);
+        assertEq(fundAllocation.getGoalOfTheRequest(0,0),requestGoal);
+    }
+
+    /**
+     * @notice Test ti check the deadline of the request made
+     */
+    function testTheDeadlineOfRequestCreated() external {
+        vm.prank(bob);
+        fundAllocation.createProposal(proposalDescription,proposalGoal,proposalDeadline);
+
+        vm.prank(alice);
+        fundAllocation.contribute(0,contributeAmount);
+
+        vm.prank(bob);
+        vm.warp(block.timestamp + fundAllocation.getProposalDeadline(0));
+
+        vm.prank(bob);
+        fundAllocation.CreateRequestToSpendFunds(0,requestDescription,janice,requestGoal,requestDeadline);
+        assertEq(fundAllocation.getRequestDeadline(0,0), block.timestamp + requestDeadline);
+    }
+
+    /**
+     * @notice to test the intial condition of completed is false
+     */
+    function testTheStateOfCompletedInCreateRequestIsFalse() external {
+        vm.prank(bob);
+        fundAllocation.createProposal(proposalDescription,proposalGoal,proposalDeadline);
+
+        vm.prank(alice);
+        fundAllocation.contribute(0,contributeAmount);
+
+        vm.prank(bob);
+        vm.warp(block.timestamp + fundAllocation.getProposalDeadline(0));
+
+        vm.prank(bob);
+        fundAllocation.CreateRequestToSpendFunds(0,requestDescription,janice,requestGoal,requestDeadline);
+        assert(fundAllocation.getBoolIfRequestIsCompletedOrNot(0,0) == false);
     }
 }
