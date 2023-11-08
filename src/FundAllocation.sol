@@ -699,6 +699,11 @@ contract FundAllocation is ReentrancyGuard {
         return token;
     }
 
+    /**
+     * 
+     * @param proposalId The proposalID of that specific proposal
+     * @param requestId The requestId of that specific request
+     */
     function getCompletedOrNot(uint256 proposalId,uint256 requestId) external view 
     IfValidProposalId(proposalId)
     IfValidRequestIdOfTheSpecificProposalId(proposalId,requestId) returns(bool){
