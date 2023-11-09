@@ -9,9 +9,9 @@ import {FundAllocation} from "../src/FundAllocation.sol";
 import {DeployFundAllocation} from "../script/DeployFundAllocation.s.sol";
 
 contract TestFundAllocation is Test {
-    Token token;
-    DeployFundAllocation deployer;
-    FundAllocation fundAllocation;
+    Token public token;
+    DeployFundAllocation public deployer;
+    FundAllocation public fundAllocation;
 
     //Making Addresses
     address bob = makeAddr("bob");

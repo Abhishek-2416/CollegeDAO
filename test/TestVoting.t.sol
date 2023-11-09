@@ -9,11 +9,11 @@ import {DeployToken} from "../script/DeployToken.s.sol";
 import {DeployVoting} from "../script/DeployVoting.s.sol";
 
 contract TestVoting is Test {
-    DeployVoting deployer;
-    Voting voting;
+    DeployVoting public deployer;
+    Voting public voting;
 
-    DeployToken deployerToken;
-    Token token;
+    DeployToken public deployerToken;
+    Token public token;
 
     //Making Addresses
     address bob = makeAddr("bob");
