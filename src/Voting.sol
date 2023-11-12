@@ -75,9 +75,10 @@ contract Voting {
 
         proposal.description = _description;
         proposal.deadline = block.timestamp + _deadline;
-        numProposals++;
-
+        
         emit ProposalCreated(_description, numProposals);
+
+        numProposals++;
     }
 
     function castVote(uint256 _proposalId, Vote vote) external memberOfDAOOnly activeProposalOnly(_proposalId) {
