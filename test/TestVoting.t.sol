@@ -26,7 +26,15 @@ contract TestVoting is Test {
 
     //Events
     event ProposalCreated(string indexed description, uint256 indexed proposalId);
-    event Voted(uint256 indexed proposalId,address indexed voter);
+    event VoteCasted(uint256 indexed proposalId, address indexed voter, Vote indexed vote);
+    event UpdatedVote(uint256 indexed proposalId, address indexed voter, Vote indexed vote);
+
+    //This is the possible options to vote for
+    enum Vote {
+        Abstain,
+        Yes,
+        No
+    }
 
     function setUp() external {
         deployer = new DeployVoting();
@@ -35,6 +43,10 @@ contract TestVoting is Test {
         deployerToken = new DeployToken();
         token = deployerToken.run();
     }
+
+    //////////////////////
+    // Create Proposal ///
+    //////////////////////
 
     function testIfCreateProposalWorks() external {
         vm.prank(bob);
@@ -86,6 +98,10 @@ contract TestVoting is Test {
         emit ProposalCreated(actualDescription,2);
         voting.createProposal(actualDescription,actualDeadline);
     }
+
+    //////////////////
+    // Create Vote //
+    /////////////////
 
     function testCastVoteWorks() external {
         vm.prank(bob);
@@ -150,6 +166,10 @@ contract TestVoting is Test {
         vm.expectRevert();
         voting.castVote(1,Voting.Vote.Yes);
     }
+
+    //////////////////
+    // Change Vote //
+    ////////////////
 
     function testChangeVoteDoesntWorkWhenProposalNotActive() external {
         vm.prank(bob);

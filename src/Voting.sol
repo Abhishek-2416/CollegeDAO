@@ -21,7 +21,7 @@ contract Voting {
      */
     event ProposalCreated(string indexed description, uint256 indexed proposalId);
     event VoteCasted(uint256 indexed proposalId, address indexed voter, Vote indexed vote);
-    event UpdatedVote(uint256 indexed proposalId, address indexed voter, Vote indexed vote)
+    event UpdatedVote(uint256 indexed proposalId, address indexed voter, Vote indexed vote);
 
     //This is the possible options to vote for
     enum Vote {
@@ -79,11 +79,10 @@ contract Voting {
 
         proposal.description = _description;
         proposal.deadline = block.timestamp + _deadline;
-        
-
-        emit ProposalCreated(_description, numProposals);
 
         numProposals++;
+        
+        emit ProposalCreated(_description, numProposals);
     }
 
     function castVote(uint256 _proposalId, Vote vote) external memberOfDAOOnly activeProposalOnly(_proposalId) {
