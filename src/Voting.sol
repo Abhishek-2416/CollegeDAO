@@ -14,14 +14,18 @@ contract Voting {
     error Voting__TheDeadlineCannotBeZero();
     error Voting__TheDescriptionCannotBeEmpty();
     error Voting__AlreadyVoted();
+    error Voting__YouDontNeedToCastVoteIfYouWantToAbstain();
 
     /**
      * Events
      */
     event ProposalCreated(string indexed description, uint256 indexed proposalId);
+    event VoteCasted(uint256 indexed proposalId, address indexed voter, Vote indexed vote);
+    event UpdatedVote(uint256 indexed proposalId, address indexed voter, Vote indexed vote)
 
     //This is the possible options to vote for
     enum Vote {
+        Abstain,
         Yes,
         No
     }
@@ -75,12 +79,18 @@ contract Voting {
 
         proposal.description = _description;
         proposal.deadline = block.timestamp + _deadline;
-        numProposals++;
+        
 
         emit ProposalCreated(_description, numProposals);
+
+        numProposals++;
     }
 
     function castVote(uint256 _proposalId, Vote vote) external memberOfDAOOnly activeProposalOnly(_proposalId) {
+        if (vote == Vote.Abstain) {
+            revert Voting__YouDontNeedToCastVoteIfYouWantToAbstain();
+        }
+
         Proposal storage thisproposal = proposals[_proposalId];
 
         if(thisproposal.voters[msg.sender]){
@@ -96,9 +106,15 @@ contract Voting {
         }
 
         thisproposal.voters[msg.sender] = true;
+
+        emit VoteCasted(_proposalId,msg.sender,vote);
     }
 
     function changeVote(uint256 _proposalId, Vote vote) external memberOfDAOOnly activeProposalOnly(_proposalId) {
+        if (vote == Vote.Abstain) {
+            revert Voting__YouDontNeedToCastVoteIfYouWantToAbstain();
+        }
+
         // clear out previous vote
         Proposal storage thisproposal = proposals[_proposalId];
 
@@ -114,9 +130,14 @@ contract Voting {
         if (vote == Vote.Yes) {
             thisproposal.yesVotes++;
             thisproposal.voteState[msg.sender] = Vote.Yes;
+
+            emit UpdatedVote(_proposalId,msg.sender,vote);
+
         } else if (vote == Vote.No) {
             thisproposal.noVotes++;
             thisproposal.voteState[msg.sender] = Vote.No;
+
+            emit UpdatedVote(_proposalId,msg.sender,vote);
         }
     }
 
