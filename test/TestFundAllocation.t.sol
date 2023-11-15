@@ -1000,16 +1000,16 @@ contract TestFundAllocation is Test {
     /**
      * @notice The PaymentMade event is emitted when we call makePayment
      */
-    // function testThePaymentMadeIsEmittedWhenMakePaymentIsCalled() external 
-    // BaseConditionForMakePayment{
-    //     address abhishek = makeAddr("abhishek");
-    //     vm.prank(abhishek);
-    //     fundAllocation.voteRequest(0,0,FundAllocation.Vote.Yes);
+    function testThePaymentMadeIsEmittedWhenMakePaymentIsCalled() external 
+    BaseConditionForMakePayment{
+        address abhishek = makeAddr("abhishek");
+        vm.prank(abhishek);
+        fundAllocation.voteRequest(0,0,FundAllocation.Vote.Yes);
 
-    //     vm.startPrank(bob);
-    //     vm.expectEmit(true,true,false,true);
-    //     emit PaymentMade(0,0);
-    //     fundAllocation.makePayment(0,0);
-    //     vm.stopPrank();
-    // }
+        vm.startPrank(bob);
+        vm.expectEmit(true,true,false,true);
+        emit PaymentMade(0,0);
+        fundAllocation.makePayment(0,0);
+        vm.stopPrank();
+    }
 }
