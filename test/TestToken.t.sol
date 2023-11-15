@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import {Test ,console} from "forge-std/Test.sol";
-import {Token} from "../src/Token.sol";
-import {DeployToken} from "../script/DeployToken.s.sol";
 import {Vm} from "forge-std/Vm.sol";
+import {Test} from "forge-std/Test.sol";
+import {Token} from "../src/Token.sol";
+import {console} from "forge-std/console.sol";
+import {DeployToken} from "../script/DeployToken.s.sol";
 
 contract TestToken is Test{
     event Transfer(address indexed from, address indexed to, uint256 indexed tokenId);
